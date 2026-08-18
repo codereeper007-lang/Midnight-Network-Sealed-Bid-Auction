@@ -1,0 +1,11 @@
+{
+  "contractAddress": "0200685b0974b8b300e3685f68b495ab0d81b3b9436c677f67dc8c7588f9fec1",
+  "txHash": "0xc04ef9868238f43cc3cebe1b61bfb7f50a95811b8ad4a174c2a33854cda4622e",
+  "networkId": "preview",
+  "indexerUri": "https://indexer.preview.midnight.network/api/v1/graphql",
+  "nodeUri": "https://rpc.preview.midnight.network",
+  "proofServerUri": "http://localhost:6300",
+  "minReserveBid": 100,
+  "isOpen": true,
+  "deployedAt": "2026-08-18T21:05:52.195Z"
+}
