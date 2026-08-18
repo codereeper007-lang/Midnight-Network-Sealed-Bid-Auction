@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Midnight Network | Zero-Knowledge Sealed-Bid Auction</title>
+  <meta name="description" content="Submit verifiable zero-knowledge sealed bids using a modular privacy platform designed for Midnight Network production.">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://db.onlinewebfonts.com/c/52d80dcf2822d0577a7f7d18ceb26be3?family=BubbledotICG-FinePos" rel="stylesheet" type="text/css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Full-Bleed Video Background -->
+  <video
+    id="bg-video"
+    class="bg-video"
+    autoplay
+    loop
+    muted
+    playsinline
+    preload="auto"
+  >
+    <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260809_012548_ef22562c-c0ae-4816-ad9d-f8922af4e6a7.mp4" type="video/mp4">
+  </video>
+  <div class="video-overlay"></div>
+
+  <!-- App Wrapper (Single Viewport) -->
+  <div id="app" class="app-viewport">
+    
+    <!-- Top Header -->
+    <header class="site-header" id="site-header">
+      <div class="header-inner">
+        <!-- Logo -->
+        <a href="#" class="logo-link" id="nav-logo">
+          <div class="logo-circle">
+            <svg viewBox="0 0 100 100" width="28" height="28">
+              <path d="M28 68 L50 28 L72 68 L59 68 L50 49 L41 68 Z" fill="#000000"/>
+              <circle cx="50" cy="59" r="4.5" fill="#000000"/>
+            </svg>
+          </div>
+          <span class="logo-text">MIDNIGHT</span>
+        </a>
+
+        <!-- Center Nav Pill -->
+        <nav class="nav-pill" id="nav-menu">
+          <a href="#home" class="nav-link active" id="nav-home">Home</a>
+          <a href="#product" class="nav-link" id="nav-product">Product</a>
+          <a href="#case-studies" class="nav-link" id="nav-cases">Case Studies</a>
+          <a href="#contact" class="nav-link" id="nav-contact">Contact</a>
+        </nav>
+
+        <!-- Right Action Pill -->
+        <div class="header-actions">
+          <button class="sign-in-pill" id="btn-sign-in">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Sign in</span>
+          </button>
+          
+          <button class="mobile-menu-toggle" id="btn-mobile-toggle" aria-label="Toggle menu">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Hero Section -->
+    <main class="hero-section" id="hero-section">
+      <div class="hero-content">
+        
+        <!-- Trust Row -->
+        <div class="trust-row" id="trust-row">
+          <div class="avatar-group">
+            <div class="avatar-ring avatar-ms" title="Microsoft">
+              <i class="fa-brands fa-microsoft"></i>
+            </div>
+            <div class="avatar-ring avatar-amz" title="Amazon">
+              <i class="fa-brands fa-amazon"></i>
+            </div>
+            <div class="avatar-ring avatar-goog" title="Google">
+              <i class="fa-brands fa-google"></i>
+            </div>
+          </div>
+          <span class="trust-text">Trusted by 2000+ Enterprises</span>
+        </div>
+
+        <!-- Headline -->
+        <h1 class="hero-headline" id="hero-headline">
+          <span class="headline-line">Zero-Knowledge</span>
+          <span class="headline-line">Sealed-Bid Auction</span>
+        </h1>
+
+        <!-- Subhead -->
+        <p class="hero-subhead" id="hero-subhead">
+          Submit verifiable bids using a modular ZK platform designed for Midnight Network production.
+        </p>
+
+        <!-- CTA Action Area -->
+        <div class="hero-cta-wrapper" id="hero-cta-wrapper">
+          <button class="primary-cta-pill" id="btn-primary-action">
+            <span class="btn-glow"></span>
+            <span class="btn-content">
+              <i class="fa-solid fa-wallet" id="cta-icon"></i>
+              <span id="cta-text">Connect Lace Wallet</span>
+            </span>
+          </button>
+          <div class="network-indicator" id="network-indicator">
+            <span class="pulse-dot"></span>
+            <span class="net-name">Midnight Preview Testnet</span>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Stats Footer -->
+    <footer class="stats-footer" id="stats-footer">
+      <div class="stats-grid">
+        
+        <div class="stat-col" id="stat-col-highbid">
+          <div class="stat-label">Current High Bid</div>
+          <div class="stat-value" id="val-highbid">
+            <span class="stat-num" data-target="2450">0</span>
+            <span class="stat-unit">tDUST</span>
+            <span class="zk-badge"><i class="fa-solid fa-lock"></i> ZK Sealed</span>
+          </div>
+          <div class="stat-desc">Reserve: ≥ 100 tDUST</div>
+        </div>
+
+        <div class="stat-col" id="stat-col-bids">
+          <div class="stat-label">Bids Placed</div>
+          <div class="stat-value" id="val-bids">
+            <span class="stat-num" data-target="48">0</span>
+            <span class="stat-unit">bids</span>
+          </div>
+          <div class="stat-desc">Zero-knowledge commitments</div>
+        </div>
+
+        <div class="stat-col" id="stat-col-uptime">
+          <div class="stat-label">Network Uptime</div>
+          <div class="stat-value" id="val-uptime">
+            <span class="stat-num" data-target="99.99">0</span>
+            <span class="stat-unit">%</span>
+          </div>
+          <div class="stat-desc">Decentralized Midnight consensus</div>
+        </div>
+
+        <div class="stat-col" id="stat-col-proof">
+          <div class="stat-label">Circuit Proof Time</div>
+          <div class="stat-value" id="val-proof">
+            <span class="stat-num" data-target="1.2">0</span>
+            <span class="stat-unit">s</span>
+          </div>
+          <div class="stat-desc">Local client witness proving</div>
+        </div>
+
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Interactive Sealed-Bid Modal -->
+  <div class="modal-backdrop" id="bid-modal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon"><i class="fa-solid fa-gavel"></i></div>
+          <div>
+            <h3 class="modal-title">Submit ZK Sealed Bid</h3>
+            <p class="modal-subtitle">Private witness is evaluated locally; bid amount is never disclosed.</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="btn-close-modal" aria-label="Close modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- 3-Zone Architecture Visualizer -->
+      <div class="zk-zone-tracker">
+        <div class="zone-step active" id="step-witness">
+          <div class="step-num">1</div>
+          <div class="step-info">
+            <span class="step-title">Witness Zone</span>
+            <span class="step-status">Local & Private</span>
+          </div>
+        </div>
+        <div class="zone-connector"></div>
+        <div class="zone-step" id="step-circuit">
+          <div class="step-num">2</div>
+          <div class="step-info">
+            <span class="step-title">Circuit Engine</span>
+            <span class="step-status">ZK Proof Generation</span>
+          </div>
+        </div>
+        <div class="zone-connector"></div>
+        <div class="zone-step" id="step-ledger">
+          <div class="step-num">3</div>
+          <div class="step-info">
+            <span class="step-title">Public Ledger</span>
+            <span class="step-status">Nullifier & Commitment</span>
+          </div>
+        </div>
+      </div>
+
+      <form id="bid-form" class="bid-form" onsubmit="return false;">
+        <div class="form-group">
+          <label for="input-bid-amount">Secret Bid Amount (tDUST)</label>
+          <div class="input-wrapper">
+            <input 
+              type="number" 
+              id="input-bid-amount" 
+              name="bidAmount" 
+              placeholder="e.g. 2500" 
+              min="100" 
+              step="1" 
+              required
+            >
+            <span class="input-suffix">tDUST</span>
+          </div>
+          <small class="form-hint">Minimum reserve: 100 tDUST. Stored in your local private witness.</small>
+        </div>
+
+        <div class="form-group">
+          <div class="label-with-action">
+            <label for="input-bidder-secret">Bidder Secret Credential (Bytes32)</label>
+            <button type="button" class="btn-text-action" id="btn-generate-secret">
+              <i class="fa-solid fa-rotate"></i> Auto-Generate
+            </button>
+          </div>
+          <div class="input-wrapper">
+            <input 
+              type="text" 
+              id="input-bidder-secret" 
+              name="bidderSecret" 
+              readonly
+            >
+            <span class="input-suffix"><i class="fa-solid fa-key"></i></span>
+          </div>
+          <small class="form-hint">Derives nullifier <code id="nullifier-preview">H(secret)</code> to prevent double-bids.</small>
+        </div>
+
+        <div class="zk-output-preview" id="zk-output-preview" style="display: none;">
+          <div class="preview-row">
+            <span>Nullifier Hash:</span>
+            <code id="preview-nullifier">0x...</code>
+          </div>
+          <div class="preview-row">
+            <span>ZK Bid Commitment:</span>
+            <code id="preview-commitment">0x...</code>
+          </div>
+          <div class="preview-row">
+            <span>Transaction Hash:</span>
+            <code id="preview-txhash">0x...</code>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="btn-cancel-bid">Cancel</button>
+          <button type="submit" class="btn-primary" id="btn-submit-zk-bid">
+            <span class="btn-text"><i class="fa-solid fa-shield-halved"></i> Generate Proof & Bid</span>
+            <span class="spinner" style="display: none;"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
