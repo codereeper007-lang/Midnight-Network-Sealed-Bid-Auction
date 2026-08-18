@@ -1,0 +1,22 @@
+{
+  "version": "0.1.0",
+  "contract": "auction.compact",
+  "circuits": [
+    {
+      "name": "initialize",
+      "inputs": ["reserve: Uint<64>", "adminPubKey: Bytes<32>"],
+      "outputs": []
+    },
+    {
+      "name": "submitBid",
+      "witnesses": ["getBidAmount: Uint<64>", "getBidderSecret: Bytes<32>", "getBidderSalt: Bytes<32>"],
+      "disclosures": ["nullifier: Bytes<32>", "bidCommitment: Bytes<32>"],
+      "outputs": []
+    },
+    {
+      "name": "closeAuction",
+      "inputs": [],
+      "outputs": []
+    }
+  ]
+}
