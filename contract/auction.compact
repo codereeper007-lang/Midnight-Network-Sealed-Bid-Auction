@@ -1,0 +1,60 @@
+// Midnight Sealed-Bid Auction Compact Smart Contract
+// Target: Midnight Preview Testnet
+
+include "std";
+
+ledger {
+  isOpen: Cell<Boolean>;
+  totalBids: Counter;
+  minReserveBid: Cell<Uint<64>>;
+  highestBidCommitment: Cell<Bytes<32>>;
+  nullifiers: Map<Bytes<32>, Boolean>;
+  auctioneer: Cell<Bytes<32>>;
+}
+
+witness getBidAmount(): Uint<64>;
+witness getBidderSecret(): Bytes<32>;
+witness getBidderSalt(): Bytes<32>;
+
+export circuit initialize(reserve: Uint<64>, adminPubKey: Bytes<32>): [] {
+  isOpen = true;
+  totalBids.increment(0);
+  minReserveBid = reserve;
+  highestBidCommitment = 0x0000000000000000000000000000000000000000000000000000000000000000;
+  auctioneer = adminPubKey;
+}
+
+export circuit submitBid(): [] {
+  // 1. Assert Auction is actively accepting bids
+  assert(isOpen, "Auction is currently closed");
+
+  // 2. Query private witness zone
+  const amount: Uint<64> = getBidAmount();
+  const secret: Bytes<32> = getBidderSecret();
+  const salt: Bytes<32> = getBidderSalt();
+
+  // 3. Enforce reserve constraints in zero-knowledge (without revealing amount)
+  assert(amount >= minReserveBid, "Bid amount is strictly below the required minimum reserve");
+
+  // 4. Compute unique nullifier to prevent double-bidding
+  const nullifier: Bytes<32> = persistentHash<Bytes<32>>(secret);
+
+  // 5. Assert nullifier has not been spent
+  assert(!nullifiers.member(nullifier), "Double-bidding error: This bidder credential has already cast a bid");
+
+  // 6. Compute zero-knowledge bid commitment Hash(amount, secret, salt)
+  const bidCommitment: Bytes<32> = persistentHash<Vector<3, Bytes<32>>>([
+    secret,
+    salt,
+    persistentHash<Uint<64>>(amount)
+  ]);
+
+  // 7. Safely disclose verified public outputs to the ledger
+  nullifiers.insert(disclose(nullifier), true);
+  totalBids.increment(1);
+  highestBidCommitment = disclose(bidCommitment);
+}
+
+export circuit closeAuction(): [] {
+  isOpen = false;
+}
