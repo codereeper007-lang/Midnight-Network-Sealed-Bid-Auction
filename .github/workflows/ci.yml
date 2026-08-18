@@ -1,0 +1,37 @@
+name: Midnight Sealed-Bid Auction CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [22.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Verify Compact Smart Contract Syntax & Managed Bindings
+        run: npm run compact:compile
+
+      - name: Run Contract & Privacy Test Suite
+        run: npm test
+
+      - name: Build Web Application
+        run: npm run build
