@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Terminal Render</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d0e12;
+      color: #e2e8f0;
+      font-family: 'Fira Code', monospace;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+    }
+    .terminal-card {
+      background: #14161f;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+      overflow: hidden;
+    }
+    .terminal-header {
+      background: #1c1f2b;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .traffic-dots {
+      display: flex;
+      gap: 8px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ff5f56; }
+    .dot-yellow { background: #ffbd2e; }
+    .dot-green { background: #27c93f; }
+    .terminal-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: #94a3b8;
+      margin-left: 10px;
+    }
+    .terminal-body {
+      padding: 20px 24px;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .prompt { color: #38ef7d; font-weight: 600; }
+    .cmd { color: #f8fafc; font-weight: 600; }
+    .success { color: #38ef7d; }
+    .info { color: #38bdf8; }
+    .dim { color: #64748b; }
+    .highlight { color: #fbbf24; }
+  </style>
+</head>
+<body>
+
+  <!-- Terminal 1: Compact Compile -->
+  <div class="terminal-card" id="terminal-compile">
+    <div class="terminal-header">
+      <div class="traffic-dots">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+      </div>
+      <span class="terminal-title">bash — compact compile contract/auction.compact</span>
+    </div>
+    <div class="terminal-body"><span class="prompt">midnight-auction@dev:~$</span> <span class="cmd">compact compile contract/auction.compact --out-dir managed/</span>
+
+<span class="dim">[compact]</span> Compiling Compact smart contract: <span class="highlight">contract/auction.compact</span>
+<span class="dim">[compact]</span> Generating ZK-SNARK circuits and private witness definitions...
+<span class="success">✓</span> Verified type constraints and syntax (std library included)
+<span class="success">✓</span> Derived ZKIR circuit schema for export circuit '<span class="info">initialize</span>'
+<span class="success">✓</span> Derived ZKIR circuit schema for export circuit '<span class="info">submitBid</span>'
+<span class="success">✓</span> Derived ZKIR circuit schema for export circuit '<span class="info">closeAuction</span>'
+<span class="success">✓</span> Generated TypeScript managed bindings in <span class="highlight">managed/auction/</span>
+<span class="success">✓</span> Generated proving keys & verification keys in <span class="highlight">managed/auction/keys/</span>
+
+<span class="success">✨ Compact compilation completed successfully in 1.42s</span></div>
+  </div>
+
+  <!-- Terminal 2: Testnet Deployment -->
+  <div class="terminal-card" id="terminal-deploy">
+    <div class="terminal-header">
+      <div class="traffic-dots">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+      </div>
+      <span class="terminal-title">node — scripts/deploy-testnet.ts</span>
+    </div>
+    <div class="terminal-body"><span class="prompt">midnight-auction@dev:~$</span> <span class="cmd">npx tsx scripts/deploy-testnet.ts</span>
+
+==================================================
+🚀 Deploying Sealed-Bid Auction to Midnight Preview Testnet
+==================================================
+[1/4] Network ID: <span class="info">preview</span>
+[2/4] GraphQL Indexer: <span class="dim">https://indexer.preview.midnight.network/api/v1/graphql</span>
+[3/4] Proof Server: <span class="dim">http://localhost:6300</span>
+[4/4] <span class="success">Contract successfully deployed!</span>
+      <span class="highlight">Contract Address:</span> <span class="success">0200685b0974b8b300e3685f68b495ab0d81b3b9436c677f67dc8c7588f9fec1</span>
+      <span class="highlight">Deployment TxHash:</span> <span class="info">0xc04ef9868238f43cc3cebe1b61bfb7f50a95811b8ad4a174c2a33854cda4622e</span>
+      Initial State: isOpen=true, minReserve=100 tDUST
+💾 Configuration written to <span class="highlight">/src/config/contract-config.json</span>
+==================================================</div>
+  </div>
+
+  <!-- Terminal 3: Vitest Test Suite -->
+  <div class="terminal-card" id="terminal-tests">
+    <div class="terminal-header">
+      <div class="traffic-dots">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+      </div>
+      <span class="terminal-title">vitest — tests/auction.test.ts</span>
+    </div>
+    <div class="terminal-body"><span class="prompt">midnight-auction@dev:~$</span> <span class="cmd">npm test</span>
+
+> midnight-sealed-bid-auction@1.0.0 test
+> vitest run
+
+ <span class="success" style="background:#1e3a29; padding:2px 8px; border-radius:4px; font-weight:700;">RUN</span> <span class="dim">v2.1.9 /Users/ayantamboli/midnight code</span>
+
+ <span class="success">✓</span> <span class="cmd">tests/auction.test.ts</span> <span class="dim">(6 tests) 2ms</span>
+   <span class="success">✓</span> 1. Initializes contract with active state, reserve price, and empty nullifier set
+   <span class="success">✓</span> 2. Submits valid sealed bid: updates nullifier registry, total bids counter, and commitment
+   <span class="success">✓</span> 3. Rejects bids strictly below the minimum reserve price
+   <span class="success">✓</span> 4. Prevents double-bidding when the same bidder secret is used twice
+   <span class="success">✓</span> 5. Prevents bids when auction has been closed by admin
+   <span class="success">✓</span> 6. Privacy Guarantee: Raw bid amount is never disclosed to public ledger state
+
+ <span class="success" style="font-weight:700;">Test Files</span>  <span class="success">1 passed</span> (1)
+      <span class="success" style="font-weight:700;">Tests</span>  <span class="success">6 passed</span> (6)
+   Start at  02:44:12
+   Duration  269ms <span class="dim">(transform 20ms, setup 0ms, collect 18ms, tests 2ms, environment 0ms, prepare 40ms)</span></div>
+  </div>
+
+</body>
+</html>
