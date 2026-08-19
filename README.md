@@ -10,7 +10,7 @@
 ## ⭐ 1. PROJECT HIGHLIGHTS
 
 > **Live Deployment Link:** [https://midnight-network-sealed-bid-auction.vercel.app/](https://midnight-network-sealed-bid-auction.vercel.app/)  
-> **Demo Application Video:** [https://youtu.be/midnight-sealed-bid-demo](https://youtu.be/midnight-sealed-bid-demo)  
+> **Demo Application Video:** [https://www.loom.com/share/50e3a376f25d4f61ad556d65a9dad18d](https://www.loom.com/share/50e3a376f25d4f61ad556d65a9dad18d)  
 > **Contract Address:** `0200685b0974b8b300e3685f68b495ab0d81b3b9436c677f67dc8c7588f9fec1`  
 > **Deployment Tx Hash:** `0xc04ef9868238f43cc3cebe1b61bfb7f50a95811b8ad4a174c2a33854cda4622e`
 
