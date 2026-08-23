@@ -1,23 +1,30 @@
-import { midnightService } from './services/midnightService.ts';
+import { midnightAuctionService } from './services/midnightService.ts';
+import { walletService, WalletAccountState } from './services/wallet.ts';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // DOM Elements
+  // Header Elements
+  const btnSignIn = document.getElementById('btn-sign-in') as HTMLButtonElement;
+  const headerWalletText = document.getElementById('header-wallet-btn-text') as HTMLElement;
+  const walletStatusBadge = document.getElementById('wallet-status-badge') as HTMLElement;
+  const walletAddressDisplay = document.getElementById('wallet-address-display') as HTMLElement;
+  const btnDisconnectWallet = document.getElementById('btn-disconnect-wallet') as HTMLButtonElement;
+
+  // Hero Elements
   const btnPrimaryAction = document.getElementById('btn-primary-action') as HTMLButtonElement;
+  const btnRevealAction = document.getElementById('btn-reveal-action') as HTMLButtonElement;
   const ctaText = document.getElementById('cta-text') as HTMLElement;
   const ctaIcon = document.getElementById('cta-icon') as HTMLElement;
-  const btnSignIn = document.getElementById('btn-sign-in') as HTMLButtonElement;
-  
+
   // Modal Elements
   const bidModal = document.getElementById('bid-modal') as HTMLElement;
+  const modalHeading = document.getElementById('modal-heading') as HTMLElement;
   const btnCloseModal = document.getElementById('btn-close-modal') as HTMLButtonElement;
   const btnCancelBid = document.getElementById('btn-cancel-bid') as HTMLButtonElement;
   const bidForm = document.getElementById('bid-form') as HTMLFormElement;
+  const groupBidAmount = document.getElementById('group-bid-amount') as HTMLElement;
   const inputBidAmount = document.getElementById('input-bid-amount') as HTMLInputElement;
-  const inputBidderSecret = document.getElementById('input-bidder-secret') as HTMLInputElement;
-  const btnGenerateSecret = document.getElementById('btn-generate-secret') as HTMLButtonElement;
   const btnSubmitZkBid = document.getElementById('btn-submit-zk-bid') as HTMLButtonElement;
   const zkOutputPreview = document.getElementById('zk-output-preview') as HTMLElement;
-  const previewNullifier = document.getElementById('preview-nullifier') as HTMLElement;
   const previewCommitment = document.getElementById('preview-commitment') as HTMLElement;
   const previewTxHash = document.getElementById('preview-txhash') as HTMLElement;
 
@@ -32,58 +39,98 @@ document.addEventListener('DOMContentLoaded', () => {
   // Stat Counter Elements
   const statElements = document.querySelectorAll<HTMLElement>('.stat-num');
 
-  // Initialize random secret on load
-  generateAndSetSecret();
+  let currentModalMode: 'place' | 'reveal' = 'place';
 
-  // Trigger initial stat animations
+  // Animate stats on page load
   animateStatCounters();
 
   // --------------------------------------------------------------------------
-  // Wallet Connection & CTA Handling
+  // Reactive Wallet State Management
   // --------------------------------------------------------------------------
-  btnPrimaryAction.addEventListener('click', async () => {
-    const wallet = midnightService.getWalletState();
+  walletService.subscribe((wallet: WalletAccountState) => {
+    if (wallet.isConnected && wallet.address) {
+      // Truncate address for UI display (e.g. mn_prev...8f9a)
+      const truncated = wallet.address.length > 18
+        ? `${wallet.address.slice(0, 9)}...${wallet.address.slice(-6)}`
+        : wallet.address;
 
-    if (!wallet.isConnected) {
-      // Connect Wallet
-      ctaText.textContent = "Connecting...";
-      btnPrimaryAction.disabled = true;
+      walletAddressDisplay.textContent = truncated;
+      walletStatusBadge.style.display = 'flex';
+      btnSignIn.style.display = 'none';
 
-      try {
-        const connectedWallet = await midnightService.connectLaceWallet();
-        btnPrimaryAction.disabled = false;
-        btnPrimaryAction.classList.add('connected');
-        ctaIcon.className = "fa-solid fa-gavel";
-        ctaText.textContent = "Submit Bid";
-
-        showToast("Connected to Lace Wallet Beta (Preview Testnet)", "success");
-      } catch (err) {
-        btnPrimaryAction.disabled = false;
-        ctaText.textContent = "Connect Lace Wallet";
-        showToast("Wallet connection failed", "error");
-      }
+      btnPrimaryAction.classList.add('connected');
+      ctaIcon.className = "fa-solid fa-gavel";
+      ctaText.textContent = "Place Sealed Bid";
+      btnRevealAction.style.display = 'inline-flex';
     } else {
-      // Already connected -> Open ZK Bid Modal
-      openBidModal();
+      walletStatusBadge.style.display = 'none';
+      btnSignIn.style.display = 'flex';
+      headerWalletText.textContent = "Connect Lace";
+
+      btnPrimaryAction.classList.remove('connected');
+      ctaIcon.className = "fa-solid fa-wallet";
+      ctaText.textContent = "Connect Lace Wallet";
+      btnRevealAction.style.display = 'none';
     }
   });
 
-  btnSignIn?.addEventListener('click', async () => {
-    btnPrimaryAction.click();
+  // Connect wallet handlers
+  const handleConnect = async () => {
+    ctaText.textContent = "Connecting Lace...";
+    btnPrimaryAction.disabled = true;
+    try {
+      const state = await walletService.connect();
+      showToast(`Connected to Lace Wallet (${state.address?.slice(0, 10)}...)`, "success");
+    } catch {
+      showToast("Wallet connection cancelled", "error");
+    } finally {
+      btnPrimaryAction.disabled = false;
+    }
+  };
+
+  btnSignIn.addEventListener('click', handleConnect);
+
+  btnPrimaryAction.addEventListener('click', async () => {
+    const wallet = walletService.getState();
+    if (!wallet.isConnected) {
+      await handleConnect();
+    } else {
+      openBidModal('place');
+    }
+  });
+
+  btnRevealAction.addEventListener('click', () => {
+    openBidModal('reveal');
+  });
+
+  btnDisconnectWallet.addEventListener('click', () => {
+    walletService.disconnect();
+    showToast("Lace Wallet session disconnected", "info");
   });
 
   // --------------------------------------------------------------------------
   // Modal Interactions
   // --------------------------------------------------------------------------
-  function openBidModal() {
+  function openBidModal(mode: 'place' | 'reveal') {
+    currentModalMode = mode;
     bidModal.classList.add('open');
     bidModal.setAttribute('aria-hidden', 'false');
     resetZkTracker();
     zkOutputPreview.style.display = 'none';
-    if (!inputBidderSecret.value) {
-      generateAndSetSecret();
+
+    const btnText = btnSubmitZkBid.querySelector('.btn-text') as HTMLElement;
+
+    if (mode === 'place') {
+      modalHeading.textContent = "Submit ZK Sealed Bid";
+      groupBidAmount.style.display = 'flex';
+      btnText.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Generate Proof & Place Bid';
+      inputBidAmount.value = '';
+      inputBidAmount.focus();
+    } else {
+      modalHeading.textContent = "Reveal Sealed Bid & Verify Winner";
+      groupBidAmount.style.display = 'none';
+      btnText.innerHTML = '<i class="fa-solid fa-eye"></i> Prove Knowledge & Reveal';
     }
-    inputBidAmount.focus();
   }
 
   function closeBidModal() {
@@ -100,31 +147,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  btnGenerateSecret.addEventListener('click', () => {
-    generateAndSetSecret();
-    showToast("New private secret credential generated locally", "info");
-  });
-
-  function generateAndSetSecret() {
-    const secret = midnightService.generateRandomSecret();
-    inputBidderSecret.value = secret;
-  }
-
   // --------------------------------------------------------------------------
-  // ZK Sealed Bid Submission Workflow
+  // ZK Sealed Bid & Reveal Submission Handlers
   // --------------------------------------------------------------------------
   bidForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const amount = Number(inputBidAmount.value);
-    const secret = inputBidderSecret.value;
-
-    if (!amount || amount < 100) {
-      showToast("Minimum bid reserve is 100 tDUST", "error");
-      return;
-    }
-
-    // Set UI to loading
     btnSubmitZkBid.disabled = true;
     const btnText = btnSubmitZkBid.querySelector('.btn-text') as HTMLElement;
     const spinner = btnSubmitZkBid.querySelector('.spinner') as HTMLElement;
@@ -132,42 +160,60 @@ document.addEventListener('DOMContentLoaded', () => {
     spinner.style.display = 'inline-block';
 
     try {
-      const result = await midnightService.submitSealedBid(amount, secret, (step) => {
-        setZkStep(step);
-      });
-
-      // Show proof & transaction output
-      previewNullifier.textContent = result.nullifier;
-      previewCommitment.textContent = result.bidCommitment;
-      previewTxHash.textContent = result.txHash;
-      zkOutputPreview.style.display = 'flex';
-
-      showToast(`ZK Bid successfully cast! Tx: ${result.txHash.slice(0, 10)}...`, "success");
-
-      // Update Footer Stats
-      const valBids = document.querySelector('#val-bids .stat-num') as HTMLElement;
-      if (valBids) {
-        valBids.setAttribute('data-target', result.totalBids.toString());
-        valBids.textContent = result.totalBids.toString();
-      }
-
-      // Update High Bid if amount is higher
-      const valHighBid = document.querySelector('#val-highbid .stat-num') as HTMLElement;
-      if (valHighBid) {
-        const currentHigh = Number(valHighBid.getAttribute('data-target') || 2450);
-        if (amount > currentHigh) {
-          valHighBid.setAttribute('data-target', amount.toString());
-          valHighBid.textContent = amount.toString();
+      if (currentModalMode === 'place') {
+        const amount = Number(inputBidAmount.value);
+        if (!amount || amount < 100) {
+          showToast("Minimum bid reserve is 100 tDUST", "error");
+          return;
         }
+
+        const result = await midnightAuctionService.placeSealedBid(amount, (step) => {
+          setZkStep(step);
+        });
+
+        previewCommitment.textContent = result.commitment;
+        previewTxHash.textContent = result.txHash;
+        zkOutputPreview.style.display = 'flex';
+
+        showToast(`ZK Bid placed on Midnight Preview! Tx: ${result.txHash.slice(0, 10)}...`, "success");
+
+        // Update Bids Placed counter
+        const valBids = document.querySelector('#val-bids .stat-num') as HTMLElement;
+        if (valBids) {
+          valBids.setAttribute('data-target', result.totalBids.toString());
+          valBids.textContent = result.totalBids.toString();
+        }
+
+        setTimeout(() => {
+          closeBidModal();
+          inputBidAmount.value = '';
+        }, 2200);
+
+      } else {
+        // Reveal mode
+        const result = await midnightAuctionService.revealLatestBid((step) => {
+          setZkStep(step);
+        });
+
+        previewCommitment.textContent = `Amount: ${result.amount} tDUST`;
+        previewTxHash.textContent = result.txHash;
+        zkOutputPreview.style.display = 'flex';
+
+        if (result.isWinner) {
+          showToast(`🏆 Congratulations! You currently hold the highest bid: ${result.amount} tDUST!`, "success");
+          const valHighBid = document.querySelector('#val-highbid .stat-num') as HTMLElement;
+          if (valHighBid) {
+            valHighBid.setAttribute('data-target', result.highestBid.toString());
+            valHighBid.textContent = result.highestBid.toString();
+          }
+        } else {
+          showToast(`Bid revealed (${result.amount} tDUST). Current highest is ${result.highestBid} tDUST.`, "info");
+        }
+
+        setTimeout(() => {
+          closeBidModal();
+        }, 2500);
       }
-
-      setTimeout(() => {
-        closeBidModal();
-        // Reset secret for next bid
-        generateAndSetSecret();
-        inputBidAmount.value = '';
-      }, 2500);
-
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Circuit execution failed";
       showToast(errorMessage, "error");
@@ -217,7 +263,6 @@ document.addEventListener('DOMContentLoaded', () => {
       function update(now: number) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        // easeOutExpo
         const ease = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
         const current = target * ease;
 

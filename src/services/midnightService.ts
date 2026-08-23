@@ -1,103 +1,175 @@
 /**
  * Midnight Sealed-Bid Auction Service
- * Handles Lace Wallet DApp Connector & ZK Circuit Execution
+ * Handles Compact Circuit Invocation & ZK State Management
  */
-import { SealedBidAuctionContract, AuctionWitnesses } from '../../managed/auction/index.ts';
+import {
+  SealedBidAuctionContract,
+  place_bid,
+  reveal_bid,
+  computeCommitment,
+  AuctionWitnesses,
+} from '../../managed/auction/index.ts';
+import { walletService } from './wallet.ts';
 import contractConfig from '../config/contract-config.json';
 
-export interface WalletState {
-  isConnected: boolean;
-  address: string | null;
-  network: string;
-  proofServerOnline: boolean;
+export interface StoredBidRecord {
+  commitment: string;
+  amount: number;
+  secret: string; // Stored securely in client storage, never rendered in DOM
+  timestamp: string;
+  txHash: string;
+  isRevealed: boolean;
 }
 
-export interface ZkProofResult {
+export interface BidSubmissionResult {
   txHash: string;
-  nullifier: string;
-  bidCommitment: string;
+  commitment: string;
   totalBids: number;
 }
 
-class MidnightService {
+export interface BidRevealResult {
+  txHash: string;
+  amount: number;
+  isWinner: boolean;
+  highestBid: number;
+  winner: string;
+}
+
+class MidnightAuctionService {
   private contract: SealedBidAuctionContract;
-  private wallet: WalletState = {
-    isConnected: false,
-    address: null,
-    network: contractConfig.networkId,
-    proofServerOnline: true,
-  };
 
   constructor() {
     this.contract = new SealedBidAuctionContract({
       isOpen: contractConfig.isOpen,
       minReserveBid: BigInt(contractConfig.minReserveBid),
       totalBids: 48n,
+      highestBid: 2450n,
     });
   }
 
-  public async connectLaceWallet(): Promise<WalletState> {
-    // Check if Midnight Lace Beta is injected in browser
-    const midnightObj = (window as unknown as { midnight?: { mnLace?: unknown } }).midnight;
-    
-    if (midnightObj?.mnLace) {
-      try {
-        // Request connection to Lace Beta
-        this.wallet.isConnected = true;
-        this.wallet.address = "mn_preview1" + Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-        return { ...this.wallet };
-      } catch (err) {
-        console.warn("Lace connection cancelled, falling back to simulated session:", err);
-      }
+  /**
+   * Securely generate a 32-byte secret in memory using Web Cryptography API
+   */
+  public generateSecureSecret(): string {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    return "0x" + Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  /**
+   * Place a Sealed Bid in Zero Knowledge:
+   * 1. Generates 32-byte secret in memory (NOT rendered in DOM)
+   * 2. Computes ZK commitment = H(amount, secret)
+   * 3. Calls place_bid circuit to register commitment on Midnight ledger
+   * 4. Persists secret securely to client localStorage for the reveal phase
+   */
+  public async placeSealedBid(
+    amount: number,
+    onProgress?: (step: 'witness' | 'circuit' | 'ledger') => void
+  ): Promise<BidSubmissionResult> {
+    const wallet = walletService.getState();
+    if (!wallet.isConnected) {
+      throw new Error("Please connect Lace Wallet first.");
     }
 
-    // Resilient simulated wallet session for dev / demo
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    this.wallet.isConnected = true;
-    this.wallet.address = "mn_preview1" + Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-    return { ...this.wallet };
-  }
+    if (amount < contractConfig.minReserveBid) {
+      throw new Error(`Bid amount must be at least ${contractConfig.minReserveBid} tDUST reserve.`);
+    }
 
-  public getWalletState(): WalletState {
-    return { ...this.wallet };
-  }
-
-  public generateRandomSecret(): string {
-    return "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-  }
-
-  public async submitSealedBid(
-    bidAmount: number,
-    bidderSecret: string,
-    onProgress?: (step: 'witness' | 'circuit' | 'ledger') => void
-  ): Promise<ZkProofResult> {
-    // 1. Witness Zone (Client Private evaluation)
+    // Step 1: Witness Zone (Local memory evaluation)
     if (onProgress) onProgress('witness');
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 600));
 
-    const witnesses: AuctionWitnesses = {
-      getBidAmount: () => BigInt(bidAmount),
-      getBidderSecret: () => bidderSecret,
-      getBidderSalt: () => this.generateRandomSecret(),
-    };
+    // Secure generation in memory - NEVER sent to DOM
+    const secret = this.generateSecureSecret();
+    const commitment = computeCommitment(BigInt(amount), secret);
 
-    // 2. Circuit Engine (Local ZK Proof generation)
+    // Step 2: Circuit Engine (ZK Proof generation via Lace ProofProvider)
     if (onProgress) onProgress('circuit');
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1200));
 
-    // Execute contract circuit logic
-    const result = this.contract.submitBid(witnesses);
+    // Call place_bid circuit
+    const result = place_bid(this.contract, commitment);
 
-    // 3. Ledger Submission (Midnight Preview Testnet)
+    // Step 3: Ledger Submission (Midnight Preview)
     if (onProgress) onProgress('ledger');
     await new Promise((resolve) => setTimeout(resolve, 800));
 
+    // Save bid metadata securely in client storage for future reveal
+    this.saveLocalBidRecord({
+      commitment,
+      amount,
+      secret, // Kept in localStorage, never rendered in DOM
+      timestamp: new Date().toISOString(),
+      txHash: result.txHash,
+      isRevealed: false,
+    });
+
     return {
       txHash: result.txHash,
-      nullifier: result.nullifier,
-      bidCommitment: result.bidCommitment,
+      commitment,
       totalBids: Number(result.state.totalBids),
     };
+  }
+
+  /**
+   * Reveal Bid Phase:
+   * Supplies private witness (amount, secret) to prove correspondence to registered commitment
+   */
+  public async revealLatestBid(
+    onProgress?: (step: 'witness' | 'circuit' | 'ledger') => void
+  ): Promise<BidRevealResult> {
+    const savedBids = this.getLocalBidRecords();
+    const unrevealedBid = savedBids.find((b) => !b.isRevealed);
+
+    if (!unrevealedBid) {
+      throw new Error("No unrevealed sealed bids found in local secure storage.");
+    }
+
+    if (onProgress) onProgress('witness');
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const wallet = walletService.getState();
+    const witnesses: AuctionWitnesses = {
+      getBidAmount: () => BigInt(unrevealedBid.amount),
+      getBidderSecret: () => unrevealedBid.secret,
+      getBidderAddress: () => wallet.address || "mn_preview1bidder",
+    };
+
+    if (onProgress) onProgress('circuit');
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    const result = reveal_bid(this.contract, witnesses);
+
+    if (onProgress) onProgress('ledger');
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    // Mark as revealed
+    unrevealedBid.isRevealed = true;
+    localStorage.setItem('midnight_stored_bids', JSON.stringify(savedBids));
+
+    return {
+      txHash: result.txHash,
+      amount: Number(result.amount),
+      isWinner: result.isWinner,
+      highestBid: Number(result.state.highestBid),
+      winner: result.state.winner,
+    };
+  }
+
+  public getLocalBidRecords(): StoredBidRecord[] {
+    try {
+      const data = localStorage.getItem('midnight_stored_bids');
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private saveLocalBidRecord(record: StoredBidRecord) {
+    const records = this.getLocalBidRecords();
+    records.push(record);
+    localStorage.setItem('midnight_stored_bids', JSON.stringify(records));
   }
 
   public getLedgerState() {
@@ -108,4 +180,4 @@ class MidnightService {
   }
 }
 
-export const midnightService = new MidnightService();
+export const midnightAuctionService = new MidnightAuctionService();

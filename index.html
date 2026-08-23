@@ -51,16 +51,24 @@
         <!-- Center Nav Pill -->
         <nav class="nav-pill" id="nav-menu">
           <a href="#home" class="nav-link active" id="nav-home">Home</a>
-          <a href="#product" class="nav-link" id="nav-product">Product</a>
-          <a href="#case-studies" class="nav-link" id="nav-cases">Case Studies</a>
-          <a href="#contact" class="nav-link" id="nav-contact">Contact</a>
+          <a href="#product" class="nav-link" id="nav-product">Auction Station</a>
+          <a href="#proposals" class="nav-link" id="nav-proposals">PROPOSAL.md</a>
+          <a href="#contact" class="nav-link" id="nav-contact">Testnet RPC</a>
         </nav>
 
-        <!-- Right Action Pill -->
+        <!-- Right Action Pill & Wallet Container -->
         <div class="header-actions">
+          <div class="wallet-status-badge" id="wallet-status-badge" style="display: none;">
+            <span class="pulse-dot"></span>
+            <span class="wallet-address-display" id="wallet-address-display">0x...</span>
+            <button class="btn-disconnect-pill" id="btn-disconnect-wallet" title="Disconnect Lace Wallet">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            </button>
+          </div>
+
           <button class="sign-in-pill" id="btn-sign-in">
-            <i class="fa-solid fa-shield-halved"></i>
-            <span>Sign in</span>
+            <i class="fa-solid fa-wallet"></i>
+            <span id="header-wallet-btn-text">Connect Lace</span>
           </button>
           
           <button class="mobile-menu-toggle" id="btn-mobile-toggle" aria-label="Toggle menu">
@@ -103,13 +111,23 @@
 
         <!-- CTA Action Area -->
         <div class="hero-cta-wrapper" id="hero-cta-wrapper">
-          <button class="primary-cta-pill" id="btn-primary-action">
-            <span class="btn-glow"></span>
-            <span class="btn-content">
-              <i class="fa-solid fa-wallet" id="cta-icon"></i>
-              <span id="cta-text">Connect Lace Wallet</span>
-            </span>
-          </button>
+          <div class="cta-button-group">
+            <button class="primary-cta-pill" id="btn-primary-action">
+              <span class="btn-glow"></span>
+              <span class="btn-content">
+                <i class="fa-solid fa-wallet" id="cta-icon"></i>
+                <span id="cta-text">Connect Lace Wallet</span>
+              </span>
+            </button>
+            
+            <button class="secondary-cta-pill" id="btn-reveal-action" style="display: none;">
+              <span class="btn-content">
+                <i class="fa-solid fa-eye"></i>
+                <span>Reveal Sealed Bid</span>
+              </span>
+            </button>
+          </div>
+
           <div class="network-indicator" id="network-indicator">
             <span class="pulse-dot"></span>
             <span class="net-name">Midnight Preview Testnet</span>
@@ -165,15 +183,15 @@
 
   </div>
 
-  <!-- Interactive Sealed-Bid Modal -->
+  <!-- Interactive Sealed-Bid Modal (NO DOM LEAKS: Bidder Secret is securely handled in memory) -->
   <div class="modal-backdrop" id="bid-modal" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-title-group">
           <div class="modal-icon"><i class="fa-solid fa-gavel"></i></div>
           <div>
-            <h3 class="modal-title">Submit ZK Sealed Bid</h3>
-            <p class="modal-subtitle">Private witness is evaluated locally; bid amount is never disclosed.</p>
+            <h3 class="modal-title" id="modal-heading">Submit ZK Sealed Bid</h3>
+            <p class="modal-subtitle">Private witness generated in local memory; secret is never exposed to DOM.</p>
           </div>
         </div>
         <button class="modal-close-btn" id="btn-close-modal" aria-label="Close modal">
@@ -187,7 +205,7 @@
           <div class="step-num">1</div>
           <div class="step-info">
             <span class="step-title">Witness Zone</span>
-            <span class="step-status">Local & Private</span>
+            <span class="step-status">In-Memory Secret</span>
           </div>
         </div>
         <div class="zone-connector"></div>
@@ -195,7 +213,7 @@
           <div class="step-num">2</div>
           <div class="step-info">
             <span class="step-title">Circuit Engine</span>
-            <span class="step-status">ZK Proof Generation</span>
+            <span class="step-status">Lace Proof Generation</span>
           </div>
         </div>
         <div class="zone-connector"></div>
@@ -203,13 +221,13 @@
           <div class="step-num">3</div>
           <div class="step-info">
             <span class="step-title">Public Ledger</span>
-            <span class="step-status">Nullifier & Commitment</span>
+            <span class="step-status">Commitment Disclosed</span>
           </div>
         </div>
       </div>
 
       <form id="bid-form" class="bid-form" onsubmit="return false;">
-        <div class="form-group">
+        <div class="form-group" id="group-bid-amount">
           <label for="input-bid-amount">Secret Bid Amount (tDUST)</label>
           <div class="input-wrapper">
             <input 
@@ -223,33 +241,15 @@
             >
             <span class="input-suffix">tDUST</span>
           </div>
-          <small class="form-hint">Minimum reserve: 100 tDUST. Stored in your local private witness.</small>
+          <small class="form-hint">Minimum reserve: 100 tDUST. Handled securely by local ProofProvider.</small>
         </div>
 
-        <div class="form-group">
-          <div class="label-with-action">
-            <label for="input-bidder-secret">Bidder Secret Credential (Bytes32)</label>
-            <button type="button" class="btn-text-action" id="btn-generate-secret">
-              <i class="fa-solid fa-rotate"></i> Auto-Generate
-            </button>
-          </div>
-          <div class="input-wrapper">
-            <input 
-              type="text" 
-              id="input-bidder-secret" 
-              name="bidderSecret" 
-              readonly
-            >
-            <span class="input-suffix"><i class="fa-solid fa-key"></i></span>
-          </div>
-          <small class="form-hint">Derives nullifier <code id="nullifier-preview">H(secret)</code> to prevent double-bids.</small>
+        <div class="zk-security-callout">
+          <i class="fa-solid fa-shield-check"></i>
+          <span><strong>Zero-Knowledge Assurance:</strong> 32-byte cryptographic salt is generated in Web Crypto memory and stored in encrypted client storage. It is never rendered to the DOM.</span>
         </div>
 
         <div class="zk-output-preview" id="zk-output-preview" style="display: none;">
-          <div class="preview-row">
-            <span>Nullifier Hash:</span>
-            <code id="preview-nullifier">0x...</code>
-          </div>
           <div class="preview-row">
             <span>ZK Bid Commitment:</span>
             <code id="preview-commitment">0x...</code>
@@ -263,8 +263,8 @@
         <div class="modal-actions">
           <button type="button" class="btn-secondary" id="btn-cancel-bid">Cancel</button>
           <button type="submit" class="btn-primary" id="btn-submit-zk-bid">
-            <span class="btn-text"><i class="fa-solid fa-shield-halved"></i> Generate Proof & Bid</span>
-            <span class="spinner" style="display: none;"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
+            <span class="btn-text"><i class="fa-solid fa-shield-halved"></i> Generate Proof & Place Bid</span>
+            <span class="spinner" style="display: none;"><i class="fa-solid fa-circle-notch fa-spin"></i> Proving with Lace...</span>
           </button>
         </div>
       </form>

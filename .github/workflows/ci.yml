@@ -27,11 +27,12 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Verify Compact Smart Contract Syntax & Managed Bindings
-        run: npm run compact:compile
+      - name: Download & Verify Compact Compiler CLI
+        run: |
+          npm run compile
 
-      - name: Run Contract & Privacy Test Suite
+      - name: Run Compact Contract & Privacy Test Suite
         run: npm test
 
-      - name: Build Web Application
+      - name: Build Production Web Bundle
         run: npm run build

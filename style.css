@@ -17,7 +17,7 @@
   /* Extended Brand Tokens */
   --brand-cyan: #38ef7d;
   --brand-glow: rgba(56, 239, 125, 0.35);
-  --glass-bg: rgba(18, 18, 20, 0.75);
+  --glass-bg: rgba(18, 18, 20, 0.85);
   --glass-border: rgba(255, 255, 255, 0.12);
   --card-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
   --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -171,6 +171,44 @@ html, body {
   gap: 12px;
 }
 
+.wallet-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  background: rgba(56, 239, 125, 0.12);
+  border: 1px solid rgba(56, 239, 125, 0.35);
+  border-radius: 9999px;
+  box-shadow: 0 0 15px rgba(56, 239, 125, 0.15);
+}
+
+.wallet-address-display {
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #38ef7d;
+}
+
+.btn-disconnect-pill {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #ff5f56;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.btn-disconnect-pill:hover {
+  background: rgba(255, 95, 86, 0.2);
+  transform: scale(1.1);
+}
+
 .sign-in-pill {
   display: flex;
   align-items: center;
@@ -320,6 +358,12 @@ html, body {
   opacity: 0;
 }
 
+.cta-button-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .primary-cta-pill {
   position: relative;
   padding: 16px 40px;
@@ -349,6 +393,25 @@ html, body {
   background: var(--brand-cyan);
   color: #000000;
   box-shadow: 0 0 35px var(--brand-glow), 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.secondary-cta-pill {
+  padding: 16px 32px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  border-radius: 9999px;
+  font-family: var(--font-inter);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.secondary-cta-pill:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
 }
 
 .btn-content {
@@ -616,30 +679,10 @@ html, body {
   gap: 8px;
 }
 
-.label-with-action {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .form-group label {
   font-size: 13px;
   font-weight: 600;
   color: #e0e0e0;
-}
-
-.btn-text-action {
-  background: none;
-  border: none;
-  color: #38ef7d;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-}
-
-.btn-text-action:hover {
-  text-decoration: underline;
 }
 
 .input-wrapper {
@@ -680,9 +723,23 @@ html, body {
   color: var(--muted);
 }
 
-.form-hint code {
+.zk-security-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(56, 239, 125, 0.08);
+  border: 1px solid rgba(56, 239, 125, 0.25);
+  border-radius: 10px;
+  color: #c4c2c3;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.zk-security-callout i {
   color: #38ef7d;
-  font-family: monospace;
+  font-size: 16px;
+  margin-top: 2px;
 }
 
 .zk-output-preview {

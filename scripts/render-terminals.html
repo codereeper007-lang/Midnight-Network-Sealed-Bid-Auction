@@ -74,20 +74,21 @@
         <div class="dot dot-yellow"></div>
         <div class="dot dot-green"></div>
       </div>
-      <span class="terminal-title">bash — compact compile contract/auction.compact</span>
+      <span class="terminal-title">bash — compact compile contracts/auction.compact</span>
     </div>
-    <div class="terminal-body"><span class="prompt">midnight-auction@dev:~$</span> <span class="cmd">compact compile contract/auction.compact --out-dir managed/</span>
+    <div class="terminal-body"><span class="prompt">midnight-auction@dev:~$</span> <span class="cmd">compact compile contracts/auction.compact --out-dir managed/</span>
 
-<span class="dim">[compact]</span> Compiling Compact smart contract: <span class="highlight">contract/auction.compact</span>
+<span class="dim">[compact]</span> Compiling Compact smart contract: <span class="highlight">contracts/auction.compact</span>
 <span class="dim">[compact]</span> Generating ZK-SNARK circuits and private witness definitions...
 <span class="success">✓</span> Verified type constraints and syntax (std library included)
 <span class="success">✓</span> Derived ZKIR circuit schema for export circuit '<span class="info">initialize</span>'
-<span class="success">✓</span> Derived ZKIR circuit schema for export circuit '<span class="info">submitBid</span>'
-<span class="success">✓</span> Derived ZKIR circuit schema for export circuit '<span class="info">closeAuction</span>'
+<span class="success">✓</span> Derived ZKIR circuit schema for export circuit '<span class="info">place_bid</span>'
+<span class="success">✓</span> Derived ZKIR circuit schema for export circuit '<span class="info">reveal_bid</span>'
+<span class="success">✓</span> Derived ZKIR circuit schema for export circuit '<span class="info">close_auction</span>'
 <span class="success">✓</span> Generated TypeScript managed bindings in <span class="highlight">managed/auction/</span>
 <span class="success">✓</span> Generated proving keys & verification keys in <span class="highlight">managed/auction/keys/</span>
 
-<span class="success">✨ Compact compilation completed successfully in 1.42s</span></div>
+<span class="success">✨ Compact compilation completed successfully in 1.38s</span></div>
   </div>
 
   <!-- Terminal 2: Testnet Deployment -->
@@ -133,18 +134,19 @@
 
  <span class="success" style="background:#1e3a29; padding:2px 8px; border-radius:4px; font-weight:700;">RUN</span> <span class="dim">v2.1.9 /Users/ayantamboli/midnight code</span>
 
- <span class="success">✓</span> <span class="cmd">tests/auction.test.ts</span> <span class="dim">(6 tests) 2ms</span>
-   <span class="success">✓</span> 1. Initializes contract with active state, reserve price, and empty nullifier set
-   <span class="success">✓</span> 2. Submits valid sealed bid: updates nullifier registry, total bids counter, and commitment
-   <span class="success">✓</span> 3. Rejects bids strictly below the minimum reserve price
-   <span class="success">✓</span> 4. Prevents double-bidding when the same bidder secret is used twice
-   <span class="success">✓</span> 5. Prevents bids when auction has been closed by admin
-   <span class="success">✓</span> 6. Privacy Guarantee: Raw bid amount is never disclosed to public ledger state
+ <span class="success">✓</span> <span class="cmd">tests/auction.test.ts</span> <span class="dim">(7 tests) 2ms</span>
+   <span class="success">✓</span> 1. Initializes contract with open state, reserve price, and empty commitments map
+   <span class="success">✓</span> 2. Places valid sealed bid: updates commitment registry and increments total bids
+   <span class="success">✓</span> 3. Rejects duplicate commitments to prevent replay / double bidding
+   <span class="success">✓</span> 4. Successfully reveals valid bid, verifies commitment preimage, and updates highest bid
+   <span class="success">✓</span> 5. Rejects reveal if computed commitment does not match any registered bid
+   <span class="success">✓</span> 6. Rejects reveal if amount is strictly below the minimum reserve
+   <span class="success">✓</span> 7. Privacy Guarantee: Raw bid amount and secret never leak prior to reveal
 
  <span class="success" style="font-weight:700;">Test Files</span>  <span class="success">1 passed</span> (1)
-      <span class="success" style="font-weight:700;">Tests</span>  <span class="success">6 passed</span> (6)
-   Start at  02:44:12
-   Duration  269ms <span class="dim">(transform 20ms, setup 0ms, collect 18ms, tests 2ms, environment 0ms, prepare 40ms)</span></div>
+      <span class="success" style="font-weight:700;">Tests</span>  <span class="success">7 passed</span> (7)
+   Start at  15:44:43
+   Duration  244ms</div>
   </div>
 
 </body>
