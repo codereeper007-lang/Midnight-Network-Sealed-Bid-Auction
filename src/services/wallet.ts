@@ -1,6 +1,6 @@
 /**
  * Genuine Midnight DApp Connector Service (1AM Wallet & Lace Beta)
- * Connects directly to window.midnight.mn1am or window.midnight.mnLace
+ * Features asynchronous extension injection polling and strict Preview Testnet targeting.
  * STRICT: Zero fallback to mock addresses.
  */
 
@@ -13,12 +13,19 @@ export interface WalletAccountState {
 }
 
 export interface MidnightDAppConnectorAPI {
-  enable: () => Promise<{
-    state: () => Promise<{ address: string; coinPublicKey?: string }>;
+  enable?: (network?: string) => Promise<{
+    state?: () => Promise<{ address: string; coinPublicKey?: string }>;
+    accounts?: () => Promise<string[]>;
     prove?: (circuitId: string, privateInputs: unknown) => Promise<unknown>;
     submitTx?: (tx: unknown) => Promise<string>;
   }>;
-  isEnabled: () => Promise<boolean>;
+  connect?: (network?: string) => Promise<{
+    state?: () => Promise<{ address: string; coinPublicKey?: string }>;
+    accounts?: () => Promise<string[]>;
+    prove?: (circuitId: string, privateInputs: unknown) => Promise<unknown>;
+    submitTx?: (tx: unknown) => Promise<string>;
+  }>;
+  isEnabled?: () => Promise<boolean>;
 }
 
 declare global {
@@ -38,6 +45,35 @@ export function setNetworkId(network: 'preview' | 'preprod' = 'preview'): void {
     (window as unknown as { __MIDNIGHT_NETWORK_ID__?: string }).__MIDNIGHT_NETWORK_ID__ = network;
   }
   console.log(`[Midnight DApp] Network ID set to: ${network}`);
+}
+
+/**
+ * Polling Helper: Waits for asynchronous 1AM / Midnight extension DOM injection
+ */
+export async function waitForMidnightExtension(timeoutMs = 3000): Promise<{
+  connector: MidnightDAppConnectorAPI;
+  walletType: '1AM' | 'Lace';
+}> {
+  const startTime = Date.now();
+  return new Promise((resolve, reject) => {
+    const checkInterval = setInterval(() => {
+      const mn1am = window.midnight?.mn1am;
+      const mnLace = window.midnight?.mnLace;
+
+      if (mn1am) {
+        clearInterval(checkInterval);
+        resolve({ connector: mn1am, walletType: '1AM' });
+      } else if (mnLace) {
+        clearInterval(checkInterval);
+        resolve({ connector: mnLace, walletType: 'Lace' });
+      } else if (Date.now() - startTime > timeoutMs) {
+        clearInterval(checkInterval);
+        reject(
+          new Error("1AM Wallet Extension not detected. Please install it from https://1am.xyz/")
+        );
+      }
+    }, 100);
+  });
 }
 
 export class WalletService {
@@ -74,54 +110,52 @@ export class WalletService {
   }
 
   /**
-   * Connect to 1AM Wallet or Lace Beta extension.
-   * STRICT: Throws an error if no genuine extension is detected.
+   * Connect to 1AM Wallet with asynchronous injection polling and Preview network targeting.
    */
   public async connect(): Promise<WalletAccountState> {
     setNetworkId("preview");
 
-    // 1. Detect 1AM Wallet first (primary), then Lace Beta
-    const mn1am = window.midnight?.mn1am;
-    const mnLace = window.midnight?.mnLace;
-
-    let activeConnector: MidnightDAppConnectorAPI | undefined;
-    let walletType: '1AM' | 'Lace' | null = null;
-
-    if (mn1am && typeof mn1am.enable === 'function') {
-      activeConnector = mn1am;
-      walletType = '1AM';
-    } else if (mnLace && typeof mnLace.enable === 'function') {
-      activeConnector = mnLace;
-      walletType = 'Lace';
-    }
-
-    if (!activeConnector || !walletType) {
-      throw new Error(
-        "1AM Wallet Extension (or Midnight Lace Beta) not detected in browser. Please install the Midnight 1AM Wallet extension to connect."
-      );
-    }
+    // 1. Await asynchronous injection via polling
+    const { connector, walletType } = await waitForMidnightExtension(3000);
 
     try {
-      const session = await activeConnector.enable();
-      const state = await session.state();
-      
-      if (!state || !state.address) {
-        throw new Error("Failed to retrieve public account address from Midnight wallet.");
+      // 2. Establish connection explicitly targeting the 'preview' network
+      let session;
+      if (typeof connector.connect === 'function') {
+        session = await connector.connect('preview');
+      } else if (typeof connector.enable === 'function') {
+        session = await connector.enable('preview');
+      } else {
+        throw new Error("Detected Midnight extension does not provide a standard connect/enable method.");
+      }
+
+      // 3. Extract public address from session
+      let address: string | null = null;
+      if (session && typeof session.state === 'function') {
+        const state = await session.state();
+        address = state?.address || null;
+      } else if (session && typeof session.accounts === 'function') {
+        const accounts = await session.accounts();
+        address = accounts?.[0] || null;
+      }
+
+      if (!address) {
+        throw new Error("Unable to retrieve public account address from Midnight 1AM Wallet session.");
       }
 
       this.accountState = {
         isConnected: true,
-        address: state.address,
+        address,
         network: "preview",
         walletName: walletType,
         proofProviderAvailable: true,
       };
 
-      sessionStorage.setItem('midnight_wallet_address', state.address);
+      sessionStorage.setItem('midnight_wallet_address', address);
       this.notify();
       return { ...this.accountState };
-    } catch (err) {
-      console.error(`[Midnight Wallet] ${walletType} connection rejected or failed:`, err);
+    } catch (err: unknown) {
+      console.error(`[Midnight Wallet] ${walletType} connection error:`, err);
       throw err;
     }
   }

@@ -370,18 +370,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (type === 'success') iconClass = 'fa-circle-check';
     if (type === 'error') iconClass = 'fa-circle-exclamation';
 
+    // Parse markdown links [text](url) into HTML anchors
+    const formattedMsg = message.replace(
+      /\[(.*?)\]\((.*?)\)/g,
+      '<a href="$2" target="_blank" style="color:#38ef7d;text-decoration:underline;font-weight:600;">$1</a>'
+    );
+
     toast.innerHTML = `
       <i class="fa-solid ${iconClass}"></i>
-      <span>${message}</span>
+      <span>${formattedMsg}</span>
     `;
 
     toastContainer.appendChild(toast);
+
+    const duration = type === 'error' ? 7000 : 4000;
 
     setTimeout(() => {
       toast.style.opacity = '0';
       toast.style.transform = 'translateX(40px)';
       toast.style.transition = 'all 0.3s ease';
       setTimeout(() => toast.remove(), 300);
-    }, 4000);
+    }, duration);
   }
 });
