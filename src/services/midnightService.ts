@@ -25,11 +25,12 @@ export interface StoredBidRecord {
 }
 
 export interface OnChainTxRecord {
+  action: 'PLACE_SEALED_BID' | 'REVEAL_BID' | 'INITIALIZE';
   txHash: string;
-  action: 'place_bid' | 'reveal_bid' | 'initialize';
   commitment?: string;
   amount?: number;
-  timestamp: string;
+  timestamp: number;
+  network: 'preview';
   status: 'CONFIRMED' | 'PENDING';
   explorerTxUrl: string;
 }
@@ -52,6 +53,7 @@ export interface BidRevealResult {
 
 class MidnightAuctionService {
   private contract: SealedBidAuctionContract;
+  private txListeners: ((records: OnChainTxRecord[]) => void)[] = [];
 
   constructor() {
     this.contract = new SealedBidAuctionContract({
@@ -60,6 +62,24 @@ class MidnightAuctionService {
       totalBids: 48n,
       highestBid: 2450n,
     });
+  }
+
+  public subscribeToTxUpdates(callback: (records: OnChainTxRecord[]) => void): () => void {
+    this.txListeners.push(callback);
+    callback(this.getTxHistory());
+    return () => {
+      this.txListeners = this.txListeners.filter((cb) => cb !== callback);
+    };
+  }
+
+  private notifyTxListeners() {
+    const history = this.getTxHistory();
+    for (const listener of this.txListeners) {
+      listener(history);
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('midnight_tx_updated', { detail: history }));
+    }
   }
 
   /**
@@ -81,6 +101,7 @@ class MidnightAuctionService {
    * 3. Calls 1AM Wallet DApp connector to generate ZK proof and sign
    * 4. Discloses commitment to the Midnight blockchain ledger via place_bid circuit
    * 5. Persists the secret locally in encrypted client storage for the reveal phase
+   * 6. Appends confirmed transaction record to localStorage and notifies UI
    */
   public async placeSealedBid(
     amount: number,
@@ -149,13 +170,14 @@ class MidnightAuctionService {
       explorerTxUrl,
     });
 
-    // Record on-chain activity
+    // Record on-chain activity strictly per 1AM specification
     this.addTxHistoryRecord({
+      action: 'PLACE_SEALED_BID',
       txHash: actualTxHash,
-      action: 'place_bid',
       commitment,
       amount,
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
+      network: 'preview',
       status: 'CONFIRMED',
       explorerTxUrl,
     });
@@ -231,12 +253,13 @@ class MidnightAuctionService {
 
     const explorerTxUrl = `https://explorer.1am.xyz/transaction/${actualTxHash}?network=preview`;
 
-    // Record on-chain activity
+    // Record on-chain reveal activity strictly per 1AM specification
     this.addTxHistoryRecord({
+      action: 'REVEAL_BID',
       txHash: actualTxHash,
-      action: 'reveal_bid',
       amount: Number(result.amount),
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
+      network: 'preview',
       status: 'CONFIRMED',
       explorerTxUrl,
     });
@@ -276,9 +299,10 @@ class MidnightAuctionService {
 
     return [
       {
+        action: 'INITIALIZE',
         txHash: contractConfig.txHash,
-        action: 'initialize',
-        timestamp: '2026-08-31T12:00:00Z',
+        timestamp: Date.parse(contractConfig.deployedAt || '2026-08-31T12:00:00Z'),
+        network: 'preview',
         status: 'CONFIRMED',
         explorerTxUrl: `https://explorer.1am.xyz/transaction/${contractConfig.txHash}?network=preview`,
       }
@@ -289,6 +313,7 @@ class MidnightAuctionService {
     const history = this.getTxHistory();
     history.unshift(record);
     localStorage.setItem('midnight_tx_history', JSON.stringify(history));
+    this.notifyTxListeners();
   }
 
   public getLedgerState() {

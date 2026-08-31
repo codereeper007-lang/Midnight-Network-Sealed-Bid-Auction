@@ -1,4 +1,4 @@
-import { midnightAuctionService } from './services/midnightService.ts';
+import { midnightAuctionService, OnChainTxRecord } from './services/midnightService.ts';
 import { walletService, WalletAccountState } from './services/wallet.ts';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -139,8 +139,78 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // --------------------------------------------------------------------------
-  // Activity Modal Handlers
+  // Reactive Transaction Log Updates & Handlers
   // --------------------------------------------------------------------------
+  function renderActivityList(records?: OnChainTxRecord[]) {
+    const history = records || midnightAuctionService.getTxHistory();
+    if (!activityListContainer) return;
+
+    if (!history || history.length === 0) {
+      activityListContainer.innerHTML = '<div style="color:var(--muted); text-align:center; padding:24px;">No on-chain transactions recorded yet.</div>';
+      return;
+    }
+
+    activityListContainer.innerHTML = history.map((tx) => {
+      let actionLabel = 'Contract Genesis Initialize';
+      let iconClass = 'fa-rocket';
+      if (tx.action === 'PLACE_SEALED_BID') {
+        actionLabel = 'Sealed Bid';
+        iconClass = 'fa-shield-halved';
+      } else if (tx.action === 'REVEAL_BID') {
+        actionLabel = `Reveal Bid${tx.amount ? ` (${tx.amount} tDUST)` : ''}`;
+        iconClass = 'fa-eye';
+      }
+
+      const truncatedTx = tx.txHash.length > 18
+        ? `${tx.txHash.slice(0, 12)}...${tx.txHash.slice(-6)}`
+        : tx.txHash;
+
+      const commitmentSnippet = tx.commitment
+        ? `<div style="font-size:11px; color:var(--muted); font-family:monospace; margin-top:2px;">ZK Commitment: ${tx.commitment.slice(0, 10)}...${tx.commitment.slice(-6)}</div>`
+        : '';
+
+      const timeStr = typeof tx.timestamp === 'number'
+        ? new Date(tx.timestamp).toLocaleString()
+        : new Date(tx.timestamp).toLocaleString();
+
+      return `
+        <div class="activity-item">
+          <div class="activity-info">
+            <div class="activity-action">
+              <i class="fa-solid ${iconClass}" style="color:#38ef7d;"></i>
+              <span>${actionLabel}</span>
+            </div>
+            ${commitmentSnippet}
+            <span class="activity-time">${timeStr}</span>
+          </div>
+          <div class="activity-links">
+            <span class="badge-confirmed">CONFIRMED</span>
+            <a 
+              href="https://explorer.1am.xyz/transaction/${tx.txHash}?network=preview" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              class="explorer-btn"
+              title="${tx.txHash}"
+            >
+              <span>${truncatedTx}</span>
+              <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px; margin-left:4px;"></i>
+            </a>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Subscribe to live tx updates
+  midnightAuctionService.subscribeToTxUpdates((records) => {
+    renderActivityList(records);
+  });
+
+  window.addEventListener('midnight_tx_updated', (e: Event) => {
+    const customEvent = e as CustomEvent<OnChainTxRecord[]>;
+    renderActivityList(customEvent.detail);
+  });
+
   function openActivityModal() {
     renderActivityList();
     activityModal.classList.add('open');
@@ -163,32 +233,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   activityModal.addEventListener('click', (e) => {
     if (e.target === activityModal) closeActivityModal();
   });
-
-  function renderActivityList() {
-    const history = midnightAuctionService.getTxHistory();
-    if (history.length === 0) {
-      activityListContainer.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px;">No on-chain transactions recorded yet.</div>';
-      return;
-    }
-
-    activityListContainer.innerHTML = history.map((tx) => `
-      <div class="activity-item">
-        <div class="activity-info">
-          <div class="activity-action">
-            <i class="fa-solid ${tx.action === 'place_bid' ? 'fa-shield-halved' : tx.action === 'reveal_bid' ? 'fa-eye' : 'fa-rocket'}" style="color:#38ef7d;"></i>
-            <span>${tx.action === 'place_bid' ? 'Placed Sealed Bid' : tx.action === 'reveal_bid' ? `Revealed Bid (${tx.amount} tDUST)` : 'Contract Genesis Initialize'}</span>
-          </div>
-          <span class="activity-time">${new Date(tx.timestamp).toLocaleString()}</span>
-        </div>
-        <div class="activity-links">
-          <span class="badge-confirmed">CONFIRMED</span>
-          <a href="${tx.explorerTxUrl}" target="_blank" class="explorer-btn">
-            1AM Explorer <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i>
-          </a>
-        </div>
-      </div>
-    `).join('');
-  }
 
   // --------------------------------------------------------------------------
   // Modal Interactions (Bid & Reveal)
@@ -260,7 +304,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         previewCommitment.textContent = result.commitment;
-        previewTxHash.innerHTML = `<a href="${result.explorerTxUrl}" target="_blank" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 16)}... (View on 1AM Explorer)</a>`;
+        previewTxHash.innerHTML = `<a href="https://explorer.1am.xyz/transaction/${result.txHash}?network=preview" target="_blank" rel="noopener noreferrer" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 14)}... (View on 1AM Explorer)</a>`;
         zkOutputPreview.style.display = 'flex';
         progressStatusBanner.style.display = 'none';
 
@@ -286,7 +330,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         previewCommitment.textContent = `Amount: ${result.amount} tDUST`;
-        previewTxHash.innerHTML = `<a href="${result.explorerTxUrl}" target="_blank" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 16)}... (View on 1AM Explorer)</a>`;
+        previewTxHash.innerHTML = `<a href="https://explorer.1am.xyz/transaction/${result.txHash}?network=preview" target="_blank" rel="noopener noreferrer" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 14)}... (View on 1AM Explorer)</a>`;
         zkOutputPreview.style.display = 'flex';
         progressStatusBanner.style.display = 'none';
 
@@ -389,7 +433,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Parse markdown links [text](url) into HTML anchors
     const formattedMsg = message.replace(
       /\[(.*?)\]\((.*?)\)/g,
-      '<a href="$2" target="_blank" style="color:#38ef7d;text-decoration:underline;font-weight:600;">$1</a>'
+      '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#38ef7d;text-decoration:underline;font-weight:600;">$1</a>'
     );
 
     toast.innerHTML = `
