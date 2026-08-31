@@ -1,7 +1,7 @@
 /**
  * Genuine Midnight DApp Connector Service (1AM Wallet & Lace Beta for macOS & Web3)
  * Supports official namespaces: window.midnight['1am'], window.midnight.oneAm, window.midnight.mn1am, window.midnight.mnLace
- * Features macOS Vite HMR polling and dynamic getConfiguration / balance synchronization.
+ * Features macOS Vite HMR polling (50 attempts / 5s) and dynamic getConfiguration / balance synchronization.
  */
 
 export interface MidnightWalletConfig {
@@ -11,6 +11,7 @@ export interface MidnightWalletConfig {
   nodeUri?: string;
   proverServerUri?: string;
   proofServerUri?: string;
+  substrateNodeUri?: string;
 }
 
 export interface WalletAccountState {
@@ -19,6 +20,7 @@ export interface WalletAccountState {
   network: string;
   walletName: '1AM' | 'Lace' | null;
   dustBalance?: string | number | null;
+  shieldedBalances?: Record<string, bigint> | null;
   config?: MidnightWalletConfig | null;
   proofProviderAvailable: boolean;
 }
@@ -29,10 +31,13 @@ export interface MidnightWalletAPI {
   getAddress?: () => Promise<string>;
   getDustBalance?: () => Promise<string | number>;
   getBalance?: () => Promise<string | number>;
+  getShieldedBalances?: () => Promise<Record<string, bigint>>;
   state?: () => Promise<{ address: string; coinPublicKey?: string }>;
   accounts?: () => Promise<string[]>;
   prove?: (circuitId: string, privateInputs: unknown) => Promise<unknown>;
   submitTx?: (tx: unknown) => Promise<string>;
+  submitTransaction?: (tx: unknown) => Promise<string>;
+  balanceUnsealedTransaction?: (tx: unknown) => Promise<unknown>;
   signData?: (data: unknown) => Promise<unknown>;
 }
 
@@ -67,9 +72,9 @@ export function setNetworkId(network: 'preview' | 'preprod' = 'preview'): void {
 }
 
 /**
- * macOS Polling Hook: Waits for asynchronous 1AM / Midnight extension DOM injection
+ * macOS Polling Hook: Waits for asynchronous 1AM / Midnight extension DOM injection (50 attempts / 5s)
  */
-export async function waitFor1AM(timeoutMs = 3000): Promise<{
+export async function waitFor1AM(timeoutMs = 5000): Promise<{
   wallet: MidnightInjectedWallet;
   walletName: '1AM' | 'Lace';
 }> {
@@ -116,6 +121,7 @@ export class WalletService {
     network: "preview",
     walletName: null,
     dustBalance: null,
+    shieldedBalances: null,
     config: null,
     proofProviderAvailable: false,
   };
@@ -155,11 +161,11 @@ export class WalletService {
   public async connect(): Promise<WalletAccountState> {
     setNetworkId("preview");
 
-    // 1. Wait for injection (macOS Polling)
-    const { wallet, walletName } = await waitFor1AM(3000);
+    // 1. Wait for injection (macOS Polling - 50 attempts)
+    const { wallet, walletName } = await waitFor1AM(5000);
 
     try {
-      // 2. Request Connection
+      // 2. Request Connection explicitly with 'preview' network parameter
       let walletApi: MidnightWalletAPI;
       if (typeof wallet.connect === 'function') {
         walletApi = await wallet.connect('preview');
@@ -215,12 +221,23 @@ export class WalletService {
         }
       }
 
+      // 6. Fetch user's shielded balances
+      let shieldedBalances: Record<string, bigint> | null = null;
+      if (typeof walletApi.getShieldedBalances === 'function') {
+        try {
+          shieldedBalances = await walletApi.getShieldedBalances();
+        } catch {
+          // ignore
+        }
+      }
+
       this.accountState = {
         isConnected: true,
         address,
         network: config?.networkId || "preview",
         walletName,
         dustBalance,
+        shieldedBalances,
         config,
         proofProviderAvailable: true,
       };
@@ -245,6 +262,7 @@ export class WalletService {
       network: "preview",
       walletName: null,
       dustBalance: null,
+      shieldedBalances: null,
       config: null,
       proofProviderAvailable: false,
     };

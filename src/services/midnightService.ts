@@ -122,14 +122,17 @@ class MidnightAuctionService {
     if (onProgress) onProgress('ledger', 'Broadcasting transaction to Midnight Preview Testnet...');
 
     let actualTxHash = result.txHash;
-    if (walletApi && typeof walletApi.submitTx === 'function') {
-      try {
-        const submittedHash = await walletApi.submitTx({ txHash: result.txHash, commitment });
-        if (submittedHash && typeof submittedHash === 'string') {
-          actualTxHash = submittedHash;
+    if (walletApi) {
+      const submitMethod = walletApi.submitTransaction || walletApi.submitTx;
+      if (typeof submitMethod === 'function') {
+        try {
+          const submittedHash = await submitMethod.call(walletApi, { txHash: result.txHash, commitment });
+          if (submittedHash && typeof submittedHash === 'string') {
+            actualTxHash = submittedHash;
+          }
+        } catch (subErr) {
+          console.warn("[1AM Submit] submit API log:", subErr);
         }
-      } catch {
-        // Handled
       }
     }
 
@@ -208,14 +211,17 @@ class MidnightAuctionService {
     if (onProgress) onProgress('ledger', 'Confirming winner resolution on Midnight Preview ledger...');
 
     let actualTxHash = result.txHash;
-    if (walletApi && typeof walletApi.submitTx === 'function') {
-      try {
-        const submittedHash = await walletApi.submitTx({ txHash: result.txHash });
-        if (submittedHash && typeof submittedHash === 'string') {
-          actualTxHash = submittedHash;
+    if (walletApi) {
+      const submitMethod = walletApi.submitTransaction || walletApi.submitTx;
+      if (typeof submitMethod === 'function') {
+        try {
+          const submittedHash = await submitMethod.call(walletApi, { txHash: result.txHash });
+          if (submittedHash && typeof submittedHash === 'string') {
+            actualTxHash = submittedHash;
+          }
+        } catch (subErr) {
+          console.warn("[1AM Submit] submit API log:", subErr);
         }
-      } catch {
-        // Handled
       }
     }
 
