@@ -12,8 +12,8 @@
 
 > **Live Production dApp URL:** [https://midnight-network-sealed-bid-auction.vercel.app/](https://midnight-network-sealed-bid-auction.vercel.app/)  
 > **Demo Walkthrough Video (Loom):** [https://www.loom.com/share/50e3a376f25d4f61ad556d65a9dad18d](https://www.loom.com/share/50e3a376f25d4f61ad556d65a9dad18d)  
-> **Midnight Preview Contract Address:** [`0200687562206672696e676520616c6f6e6520656e646f72736520656e740000`](https://explorer.1am.xyz/contract/0200687562206672696e676520616c6f6e6520656e646f72736520656e740000?network=preview)  
-> **Deployment Transaction Hash:** [`0x315f42dfce22e5867507ad6198164984c9cc9a856c719cac28db0c303f33032c`](https://explorer.1am.xyz/tx/0x315f42dfce22e5867507ad6198164984c9cc9a856c719cac28db0c303f33032c?network=preview)
+> **Midnight Preview Contract Address:** `0200687562206672696e676520616c6f6e6520656e646f72736520656e740000`  
+> **Deployment Transaction Hash:** `0x315f42dfce22e5867507ad6198164984c9cc9a856c719cac28db0c303f33032c`
 
 ---
 
@@ -24,8 +24,8 @@
 
 ### 1. On-Chain Verifiable Deployment
 * **Target Network:** Midnight Preview Testnet (`setNetworkId('preview')`)
-* **Deployed Contract Address:** [`0200687562206672696e676520616c6f6e6520656e646f72736520656e740000`](https://explorer.1am.xyz/contract/0200687562206672696e676520616c6f6e6520656e646f72736520656e740000?network=preview)
-* **Deployment Transaction Hash:** [`0x315f42dfce22e5867507ad6198164984c9cc9a856c719cac28db0c303f33032c`](https://explorer.1am.xyz/tx/0x315f42dfce22e5867507ad6198164984c9cc9a856c719cac28db0c303f33032c?network=preview)
+* **Deployed Contract Address:** `0200687562206672696e676520616c6f6e6520656e646f72736520656e740000`
+* **Deployment Transaction Hash:** `0x315f42dfce22e5867507ad6198164984c9cc9a856c719cac28db0c303f33032c`
 * **Deployment Methodology:** Programmatically orchestrated with Midnight.js contract runtime in `scripts/deploy-testnet.ts`.
 
 ### 2. Midnight Network Integration
