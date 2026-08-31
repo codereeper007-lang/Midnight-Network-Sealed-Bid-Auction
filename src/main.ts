@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `${wallet.address.slice(0, 9)}...${wallet.address.slice(-6)}`
         : wallet.address;
 
-      walletAddressDisplay.textContent = truncated;
+      walletAddressDisplay.textContent = `${wallet.walletName || '1AM'}: ${truncated}`;
       walletStatusBadge.style.display = 'flex';
       btnSignIn.style.display = 'none';
 
@@ -65,24 +65,25 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       walletStatusBadge.style.display = 'none';
       btnSignIn.style.display = 'flex';
-      headerWalletText.textContent = "Connect Lace";
+      headerWalletText.textContent = "Connect 1AM";
 
       btnPrimaryAction.classList.remove('connected');
       ctaIcon.className = "fa-solid fa-wallet";
-      ctaText.textContent = "Connect Lace Wallet";
+      ctaText.textContent = "Connect 1AM Wallet";
       btnRevealAction.style.display = 'none';
     }
   });
 
   // Connect wallet handlers
   const handleConnect = async () => {
-    ctaText.textContent = "Connecting Lace...";
+    ctaText.textContent = "Connecting 1AM...";
     btnPrimaryAction.disabled = true;
     try {
       const state = await walletService.connect();
-      showToast(`Connected to Lace Wallet (${state.address?.slice(0, 10)}...)`, "success");
-    } catch {
-      showToast("Wallet connection cancelled", "error");
+      showToast(`Connected to ${state.walletName} Wallet (${state.address?.slice(0, 10)}...)`, "success");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "1AM Wallet extension not detected in browser.";
+      showToast(errorMsg, "error");
     } finally {
       btnPrimaryAction.disabled = false;
     }
@@ -105,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnDisconnectWallet.addEventListener('click', () => {
     walletService.disconnect();
-    showToast("Lace Wallet session disconnected", "info");
+    showToast("Midnight Wallet session disconnected", "info");
   });
 
   // --------------------------------------------------------------------------
@@ -172,10 +173,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         previewCommitment.textContent = result.commitment;
-        previewTxHash.textContent = result.txHash;
+        previewTxHash.innerHTML = `<a href="${result.explorerTxUrl}" target="_blank" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 14)}... (View on 1AM Explorer)</a>`;
         zkOutputPreview.style.display = 'flex';
 
-        showToast(`ZK Bid placed on Midnight Preview! Tx: ${result.txHash.slice(0, 10)}...`, "success");
+        showToast(`ZK Bid successfully submitted to Midnight Preview Testnet!`, "success");
 
         // Update Bids Placed counter
         const valBids = document.querySelector('#val-bids .stat-num') as HTMLElement;
@@ -187,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
           closeBidModal();
           inputBidAmount.value = '';
-        }, 2200);
+        }, 2500);
 
       } else {
         // Reveal mode
@@ -196,11 +197,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         previewCommitment.textContent = `Amount: ${result.amount} tDUST`;
-        previewTxHash.textContent = result.txHash;
+        previewTxHash.innerHTML = `<a href="${result.explorerTxUrl}" target="_blank" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 14)}... (View on 1AM Explorer)</a>`;
         zkOutputPreview.style.display = 'flex';
 
         if (result.isWinner) {
-          showToast(`🏆 Congratulations! You currently hold the highest bid: ${result.amount} tDUST!`, "success");
+          showToast(`🏆 Congratulations! You hold the highest bid: ${result.amount} tDUST!`, "success");
           const valHighBid = document.querySelector('#val-highbid .stat-num') as HTMLElement;
           if (valHighBid) {
             valHighBid.setAttribute('data-target', result.highestBid.toString());
@@ -212,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setTimeout(() => {
           closeBidModal();
-        }, 2500);
+        }, 2800);
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Circuit execution failed";

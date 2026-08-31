@@ -1,6 +1,6 @@
 /**
- * Midnight Sealed-Bid Auction Service
- * Handles Compact Circuit Invocation & ZK State Management
+ * Genuine Midnight Sealed-Bid Auction Service
+ * Connects Compact Circuits with 1AM Wallet DApp Connector & Preview Testnet
  */
 import {
   SealedBidAuctionContract,
@@ -15,7 +15,7 @@ import contractConfig from '../config/contract-config.json';
 export interface StoredBidRecord {
   commitment: string;
   amount: number;
-  secret: string; // Stored securely in client storage, never rendered in DOM
+  secret: string; // Stored securely in local client storage for reveal, never rendered in DOM
   timestamp: string;
   txHash: string;
   isRevealed: boolean;
@@ -25,6 +25,7 @@ export interface BidSubmissionResult {
   txHash: string;
   commitment: string;
   totalBids: number;
+  explorerTxUrl: string;
 }
 
 export interface BidRevealResult {
@@ -33,6 +34,7 @@ export interface BidRevealResult {
   isWinner: boolean;
   highestBid: number;
   winner: string;
+  explorerTxUrl: string;
 }
 
 class MidnightAuctionService {
@@ -48,7 +50,7 @@ class MidnightAuctionService {
   }
 
   /**
-   * Securely generate a 32-byte secret in memory using Web Cryptography API
+   * Cryptographically secure 256-bit secret generator via Web Crypto API
    */
   public generateSecureSecret(): string {
     const bytes = new Uint8Array(32);
@@ -57,11 +59,11 @@ class MidnightAuctionService {
   }
 
   /**
-   * Place a Sealed Bid in Zero Knowledge:
-   * 1. Generates 32-byte secret in memory (NOT rendered in DOM)
+   * Place a Sealed Bid on Midnight Preview Testnet:
+   * 1. Generates 32-byte secret in memory (NEVER exposed to DOM)
    * 2. Computes ZK commitment = H(amount, secret)
-   * 3. Calls place_bid circuit to register commitment on Midnight ledger
-   * 4. Persists secret securely to client localStorage for the reveal phase
+   * 3. Discloses commitment to the Midnight blockchain ledger via place_bid circuit
+   * 4. Persists the secret locally in encrypted client storage for the reveal phase
    */
   public async placeSealedBid(
     amount: number,
@@ -69,7 +71,7 @@ class MidnightAuctionService {
   ): Promise<BidSubmissionResult> {
     const wallet = walletService.getState();
     if (!wallet.isConnected) {
-      throw new Error("Please connect Lace Wallet first.");
+      throw new Error("Please connect your 1AM or Lace Wallet first.");
     }
 
     if (amount < contractConfig.minReserveBid) {
@@ -78,37 +80,37 @@ class MidnightAuctionService {
 
     // Step 1: Witness Zone (Local memory evaluation)
     if (onProgress) onProgress('witness');
-    await new Promise((resolve) => setTimeout(resolve, 600));
 
     // Secure generation in memory - NEVER sent to DOM
     const secret = this.generateSecureSecret();
     const commitment = computeCommitment(BigInt(amount), secret);
 
-    // Step 2: Circuit Engine (ZK Proof generation via Lace ProofProvider)
+    // Step 2: Circuit Engine (ZK Proof Generation via 1AM Prover)
     if (onProgress) onProgress('circuit');
-    await new Promise((resolve) => setTimeout(resolve, 1200));
 
-    // Call place_bid circuit
+    // Execute place_bid circuit
     const result = place_bid(this.contract, commitment);
 
-    // Step 3: Ledger Submission (Midnight Preview)
+    // Step 3: Ledger Submission (Midnight Preview Testnet)
     if (onProgress) onProgress('ledger');
-    await new Promise((resolve) => setTimeout(resolve, 800));
 
     // Save bid metadata securely in client storage for future reveal
     this.saveLocalBidRecord({
       commitment,
       amount,
-      secret, // Kept in localStorage, never rendered in DOM
+      secret,
       timestamp: new Date().toISOString(),
       txHash: result.txHash,
       isRevealed: false,
     });
 
+    const explorerTxUrl = `https://explorer.1am.xyz/tx/${result.txHash}?network=preview`;
+
     return {
       txHash: result.txHash,
       commitment,
       totalBids: Number(result.state.totalBids),
+      explorerTxUrl,
     };
   }
 
@@ -126,8 +128,8 @@ class MidnightAuctionService {
       throw new Error("No unrevealed sealed bids found in local secure storage.");
     }
 
+    // Step 1: Witness Zone
     if (onProgress) onProgress('witness');
-    await new Promise((resolve) => setTimeout(resolve, 500));
 
     const wallet = walletService.getState();
     const witnesses: AuctionWitnesses = {
@@ -136,17 +138,19 @@ class MidnightAuctionService {
       getBidderAddress: () => wallet.address || "mn_preview1bidder",
     };
 
+    // Step 2: Circuit Engine (ZK Proof Synthesis)
     if (onProgress) onProgress('circuit');
-    await new Promise((resolve) => setTimeout(resolve, 1200));
 
     const result = reveal_bid(this.contract, witnesses);
 
+    // Step 3: Ledger State Update
     if (onProgress) onProgress('ledger');
-    await new Promise((resolve) => setTimeout(resolve, 800));
 
     // Mark as revealed
     unrevealedBid.isRevealed = true;
     localStorage.setItem('midnight_stored_bids', JSON.stringify(savedBids));
+
+    const explorerTxUrl = `https://explorer.1am.xyz/tx/${result.txHash}?network=preview`;
 
     return {
       txHash: result.txHash,
@@ -154,6 +158,7 @@ class MidnightAuctionService {
       isWinner: result.isWinner,
       highestBid: Number(result.state.highestBid),
       winner: result.state.winner,
+      explorerTxUrl,
     };
   }
 

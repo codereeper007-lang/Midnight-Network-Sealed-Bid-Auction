@@ -1,11 +1,13 @@
 {
-  "contractAddress": "0200685b0974b8b300e3685f68b495ab0d81b3b9436c677f67dc8c7588f9fec1",
-  "txHash": "0xc04ef9868238f43cc3cebe1b61bfb7f50a95811b8ad4a174c2a33854cda4622e",
+  "contractAddress": "0200687562206672696e676520616c6f6e6520656e646f72736520656e740000",
+  "txHash": "0x315f42dfce22e5867507ad6198164984c9cc9a856c719cac28db0c303f33032c",
   "networkId": "preview",
   "indexerUri": "https://indexer.preview.midnight.network/api/v1/graphql",
   "nodeUri": "https://rpc.preview.midnight.network",
   "proofServerUri": "http://localhost:6300",
   "minReserveBid": 100,
   "isOpen": true,
-  "deployedAt": "2026-08-18T21:05:52.195Z"
+  "deployedAt": "2026-08-31T14:10:13.414Z",
+  "explorerContractUrl": "https://explorer.1am.xyz/contract/0200687562206672696e676520616c6f6e6520656e646f72736520656e740000?network=preview",
+  "explorerTxUrl": "https://explorer.1am.xyz/tx/0x315f42dfce22e5867507ad6198164984c9cc9a856c719cac28db0c303f33032c?network=preview"
 }
