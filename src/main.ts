@@ -1,7 +1,7 @@
 import { midnightAuctionService } from './services/midnightService.ts';
 import { walletService, WalletAccountState } from './services/wallet.ts';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Header Elements
   const btnSignIn = document.getElementById('btn-sign-in') as HTMLButtonElement;
   const headerWalletText = document.getElementById('header-wallet-btn-text') as HTMLElement;
@@ -57,17 +57,33 @@ document.addEventListener('DOMContentLoaded', () => {
   // Animate stats on page load
   animateStatCounters();
 
+  // Sync with live Midnight Preview Indexer
+  try {
+    const onChainState = await midnightAuctionService.syncWithIndexer();
+    const valBids = document.querySelector('#val-bids .stat-num') as HTMLElement;
+    const valHighBid = document.querySelector('#val-highbid .stat-num') as HTMLElement;
+    if (valBids) valBids.setAttribute('data-target', onChainState.totalBids.toString());
+    if (valHighBid) valHighBid.setAttribute('data-target', onChainState.highestBid.toString());
+    animateStatCounters();
+  } catch (syncErr) {
+    console.warn("Indexer sync notice:", syncErr);
+  }
+
   // --------------------------------------------------------------------------
   // Reactive Wallet State Management
   // --------------------------------------------------------------------------
   walletService.subscribe((wallet: WalletAccountState) => {
     if (wallet.isConnected && wallet.address) {
-      // Truncate address for UI display (e.g. mn_prev...8f9a)
+      // Format address and balance (e.g. 1AM: mn_prev...8f9a | 450 tDUST)
       const truncated = wallet.address.length > 18
         ? `${wallet.address.slice(0, 9)}...${wallet.address.slice(-6)}`
         : wallet.address;
 
-      walletAddressDisplay.textContent = `${wallet.walletName || '1AM'}: ${truncated}`;
+      const balanceText = wallet.dustBalance !== null && wallet.dustBalance !== undefined
+        ? ` (${wallet.dustBalance} DUST)`
+        : '';
+
+      walletAddressDisplay.textContent = `${wallet.walletName || '1AM'}: ${truncated}${balanceText}`;
       walletStatusBadge.style.display = 'flex';
       btnSignIn.style.display = 'none';
 
@@ -244,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         previewCommitment.textContent = result.commitment;
-        previewTxHash.innerHTML = `<a href="${result.explorerTxUrl}" target="_blank" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 14)}... (View on 1AM Explorer)</a>`;
+        previewTxHash.innerHTML = `<a href="${result.explorerTxUrl}" target="_blank" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 16)}... (View on 1AM Explorer)</a>`;
         zkOutputPreview.style.display = 'flex';
         progressStatusBanner.style.display = 'none';
 
@@ -270,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         previewCommitment.textContent = `Amount: ${result.amount} tDUST`;
-        previewTxHash.innerHTML = `<a href="${result.explorerTxUrl}" target="_blank" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 14)}... (View on 1AM Explorer)</a>`;
+        previewTxHash.innerHTML = `<a href="${result.explorerTxUrl}" target="_blank" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 16)}... (View on 1AM Explorer)</a>`;
         zkOutputPreview.style.display = 'flex';
         progressStatusBanner.style.display = 'none';
 

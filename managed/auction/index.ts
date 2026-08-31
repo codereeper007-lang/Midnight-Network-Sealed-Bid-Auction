@@ -2,6 +2,7 @@
  * Managed TypeScript bindings for Midnight Compact Contract: auction.compact
  * Target: Midnight Preview Testnet
  */
+import { computeZkCommitment, computeTxHash } from '../../src/utils/crypto.ts';
 
 export interface AuctionLedgerState {
   commitments: Map<string, boolean>;
@@ -43,8 +44,10 @@ export class SealedBidAuctionContract {
     this.state.winner = "0x0000000000000000000000000000000000000000000000000000000000000000";
     this.state.auctioneer = adminPubKey;
     this.state.totalBids = 0n;
+    
+    const txHash = computeTxHash(`init_${reserve.toString()}_${adminPubKey}`);
     return {
-      txHash: "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+      txHash,
       state: { ...this.state },
     };
   }
@@ -62,12 +65,14 @@ export class SealedBidAuctionContract {
       throw new Error("Bid commitment has already been registered");
     }
 
-    // Disclose to ledger
+    // Disclose verified commitment to public ledger
     this.state.commitments.set(commitment, true);
     this.state.totalBids += 1n;
 
+    const txHash = computeTxHash(`place_${commitment}`);
+
     return {
-      txHash: "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+      txHash,
       commitment,
       state: { ...this.state, commitments: new Map(this.state.commitments) },
     };
@@ -96,7 +101,7 @@ export class SealedBidAuctionContract {
       throw new Error("Bid amount is strictly below the required minimum reserve");
     }
 
-    // Compute commitment = H(secret, H(amount))
+    // Compute cryptographic commitment = H(secret, H(amount))
     const computedCommitment = computeCommitment(amount, secret);
 
     if (!this.state.commitments.get(computedCommitment)) {
@@ -110,8 +115,10 @@ export class SealedBidAuctionContract {
       isWinner = true;
     }
 
+    const txHash = computeTxHash(`reveal_${computedCommitment}_${amount.toString()}`);
+
     return {
-      txHash: "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+      txHash,
       amount,
       isWinner,
       state: { ...this.state, commitments: new Map(this.state.commitments) },
@@ -120,8 +127,9 @@ export class SealedBidAuctionContract {
 
   public close_auction(): { txHash: string; state: AuctionLedgerState } {
     this.state.isOpen = false;
+    const txHash = computeTxHash(`close_auction_${Date.now()}`);
     return {
-      txHash: "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+      txHash,
       state: { ...this.state },
     };
   }
@@ -132,14 +140,7 @@ export class SealedBidAuctionContract {
  * H(secret, H(amount))
  */
 export function computeCommitment(amount: bigint, secret: string): string {
-  let hash = 5381;
-  const input = `${secret}_${amount.toString()}`;
-  for (let i = 0; i < input.length; i++) {
-    hash = ((hash << 5) + hash) + input.charCodeAt(i);
-    hash |= 0;
-  }
-  const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  return "0x" + hex.repeat(8).slice(0, 64);
+  return computeZkCommitment(amount, secret);
 }
 
 // Export direct circuit runner helpers
