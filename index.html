@@ -51,24 +51,24 @@
         <!-- Center Nav Pill -->
         <nav class="nav-pill" id="nav-menu">
           <a href="#home" class="nav-link active" id="nav-home">Home</a>
-          <a href="#product" class="nav-link" id="nav-product">Auction Station</a>
+          <a href="https://explorer.1am.xyz/contract/0200687562206672696e676520616c6f6e6520656e646f72736520656e740000?network=preview" target="_blank" class="nav-link" id="nav-contract">1AM Explorer <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i></a>
+          <a href="#activity" class="nav-link" id="nav-activity">On-Chain Activity</a>
           <a href="#proposals" class="nav-link" id="nav-proposals">PROPOSAL.md</a>
-          <a href="#contact" class="nav-link" id="nav-contact">Testnet RPC</a>
         </nav>
 
         <!-- Right Action Pill & Wallet Container -->
         <div class="header-actions">
           <div class="wallet-status-badge" id="wallet-status-badge" style="display: none;">
             <span class="pulse-dot"></span>
-            <span class="wallet-address-display" id="wallet-address-display">0x...</span>
-            <button class="btn-disconnect-pill" id="btn-disconnect-wallet" title="Disconnect Lace Wallet">
+            <span class="wallet-address-display" id="wallet-address-display">1AM: 0x...</span>
+            <button class="btn-disconnect-pill" id="btn-disconnect-wallet" title="Disconnect 1AM Wallet">
               <i class="fa-solid fa-arrow-right-from-bracket"></i>
             </button>
           </div>
 
           <button class="sign-in-pill" id="btn-sign-in">
             <i class="fa-solid fa-wallet"></i>
-            <span id="header-wallet-btn-text">Connect Lace</span>
+            <span id="header-wallet-btn-text">Connect 1AM</span>
           </button>
           
           <button class="mobile-menu-toggle" id="btn-mobile-toggle" aria-label="Toggle menu">
@@ -116,7 +116,7 @@
               <span class="btn-glow"></span>
               <span class="btn-content">
                 <i class="fa-solid fa-wallet" id="cta-icon"></i>
-                <span id="cta-text">Connect Lace Wallet</span>
+                <span id="cta-text">Connect 1AM Wallet</span>
               </span>
             </button>
             
@@ -126,12 +126,23 @@
                 <span>Reveal Sealed Bid</span>
               </span>
             </button>
+
+            <button class="tertiary-cta-pill" id="btn-view-activity" title="View Recent On-Chain Transactions">
+              <i class="fa-solid fa-list-check"></i>
+            </button>
           </div>
 
-          <div class="network-indicator" id="network-indicator">
+          <a 
+            href="https://explorer.1am.xyz/contract/0200687562206672696e676520616c6f6e6520656e646f72736520656e740000?network=preview" 
+            target="_blank" 
+            class="network-indicator" 
+            id="network-indicator"
+            title="Verifiable on 1AM Preview Explorer"
+          >
             <span class="pulse-dot"></span>
             <span class="net-name">Midnight Preview Testnet</span>
-          </div>
+            <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 10px; margin-left: 4px;"></i>
+          </a>
         </div>
 
       </div>
@@ -175,7 +186,7 @@
             <span class="stat-num" data-target="1.2">0</span>
             <span class="stat-unit">s</span>
           </div>
-          <div class="stat-desc">Local client witness proving</div>
+          <div class="stat-desc">1AM local ZK prover synthesis</div>
         </div>
 
       </div>
@@ -191,7 +202,7 @@
           <div class="modal-icon"><i class="fa-solid fa-gavel"></i></div>
           <div>
             <h3 class="modal-title" id="modal-heading">Submit ZK Sealed Bid</h3>
-            <p class="modal-subtitle">Private witness generated in local memory; secret is never exposed to DOM.</p>
+            <p class="modal-subtitle" id="modal-subtitle">Private witness generated in local memory; secret is never exposed to DOM.</p>
           </div>
         </div>
         <button class="modal-close-btn" id="btn-close-modal" aria-label="Close modal">
@@ -213,7 +224,7 @@
           <div class="step-num">2</div>
           <div class="step-info">
             <span class="step-title">Circuit Engine</span>
-            <span class="step-status">Lace Proof Generation</span>
+            <span class="step-status">1AM ZK Prover & Signature</span>
           </div>
         </div>
         <div class="zone-connector"></div>
@@ -224,6 +235,12 @@
             <span class="step-status">Commitment Disclosed</span>
           </div>
         </div>
+      </div>
+
+      <!-- Real-Time Progress Notice Banner -->
+      <div class="progress-status-banner" id="progress-status-banner" style="display: none;">
+        <span class="spinner-small"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
+        <span id="progress-status-text">Awaiting 1AM Wallet signature & ZK proof generation...</span>
       </div>
 
       <form id="bid-form" class="bid-form" onsubmit="return false;">
@@ -241,12 +258,12 @@
             >
             <span class="input-suffix">tDUST</span>
           </div>
-          <small class="form-hint">Minimum reserve: 100 tDUST. Handled securely by local ProofProvider.</small>
+          <small class="form-hint">Minimum reserve: 100 tDUST. Handled securely by 1AM ProofProvider.</small>
         </div>
 
         <div class="zk-security-callout">
           <i class="fa-solid fa-shield-check"></i>
-          <span><strong>Zero-Knowledge Assurance:</strong> 32-byte cryptographic salt is generated in Web Crypto memory and stored in encrypted client storage. It is never rendered to the DOM.</span>
+          <span><strong>Zero-Knowledge Privacy:</strong> 256-bit entropy salt is generated in Web Crypto memory and stored in encrypted client storage. It is never rendered to the DOM.</span>
         </div>
 
         <div class="zk-output-preview" id="zk-output-preview" style="display: none;">
@@ -255,8 +272,8 @@
             <code id="preview-commitment">0x...</code>
           </div>
           <div class="preview-row">
-            <span>Transaction Hash:</span>
-            <code id="preview-txhash">0x...</code>
+            <span>On-Chain Transaction:</span>
+            <span id="preview-txhash"><a href="#" target="_blank">0x...</a></span>
           </div>
         </div>
 
@@ -264,10 +281,36 @@
           <button type="button" class="btn-secondary" id="btn-cancel-bid">Cancel</button>
           <button type="submit" class="btn-primary" id="btn-submit-zk-bid">
             <span class="btn-text"><i class="fa-solid fa-shield-halved"></i> Generate Proof & Place Bid</span>
-            <span class="spinner" style="display: none;"><i class="fa-solid fa-circle-notch fa-spin"></i> Proving with Lace...</span>
+            <span class="spinner" style="display: none;"><i class="fa-solid fa-circle-notch fa-spin"></i> Proving with 1AM...</span>
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- On-Chain Transactions Drawer / Modal -->
+  <div class="modal-backdrop" id="activity-modal" aria-hidden="true">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon"><i class="fa-solid fa-list-check"></i></div>
+          <div>
+            <h3 class="modal-title">Live On-Chain Activity (Midnight Preview)</h3>
+            <p class="modal-subtitle">Directly verifiable on the 1AM Block Explorer.</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="btn-close-activity-modal" aria-label="Close activity modal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="activity-list" id="activity-list-container">
+        <!-- Injected via JavaScript -->
+      </div>
+
+      <div class="modal-actions" style="margin-top: 20px;">
+        <button type="button" class="btn-secondary" id="btn-close-activity">Close</button>
+      </div>
     </div>
   </div>
 

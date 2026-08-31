@@ -9,24 +9,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const walletAddressDisplay = document.getElementById('wallet-address-display') as HTMLElement;
   const btnDisconnectWallet = document.getElementById('btn-disconnect-wallet') as HTMLButtonElement;
 
+  // Nav Links
+  const navActivity = document.getElementById('nav-activity') as HTMLAnchorElement;
+
   // Hero Elements
   const btnPrimaryAction = document.getElementById('btn-primary-action') as HTMLButtonElement;
   const btnRevealAction = document.getElementById('btn-reveal-action') as HTMLButtonElement;
+  const btnViewActivity = document.getElementById('btn-view-activity') as HTMLButtonElement;
   const ctaText = document.getElementById('cta-text') as HTMLElement;
   const ctaIcon = document.getElementById('cta-icon') as HTMLElement;
 
-  // Modal Elements
+  // Modal Elements (Bid & Reveal)
   const bidModal = document.getElementById('bid-modal') as HTMLElement;
   const modalHeading = document.getElementById('modal-heading') as HTMLElement;
+  const modalSubtitle = document.getElementById('modal-subtitle') as HTMLElement;
   const btnCloseModal = document.getElementById('btn-close-modal') as HTMLButtonElement;
   const btnCancelBid = document.getElementById('btn-cancel-bid') as HTMLButtonElement;
   const bidForm = document.getElementById('bid-form') as HTMLFormElement;
   const groupBidAmount = document.getElementById('group-bid-amount') as HTMLElement;
   const inputBidAmount = document.getElementById('input-bid-amount') as HTMLInputElement;
   const btnSubmitZkBid = document.getElementById('btn-submit-zk-bid') as HTMLButtonElement;
+  const progressStatusBanner = document.getElementById('progress-status-banner') as HTMLElement;
+  const progressStatusText = document.getElementById('progress-status-text') as HTMLElement;
   const zkOutputPreview = document.getElementById('zk-output-preview') as HTMLElement;
   const previewCommitment = document.getElementById('preview-commitment') as HTMLElement;
   const previewTxHash = document.getElementById('preview-txhash') as HTMLElement;
+
+  // Activity Modal Elements
+  const activityModal = document.getElementById('activity-modal') as HTMLElement;
+  const btnCloseActivityModal = document.getElementById('btn-close-activity-modal') as HTMLButtonElement;
+  const btnCloseActivity = document.getElementById('btn-close-activity') as HTMLButtonElement;
+  const activityListContainer = document.getElementById('activity-list-container') as HTMLElement;
 
   // Step Indicators
   const stepWitness = document.getElementById('step-witness') as HTMLElement;
@@ -110,7 +123,59 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --------------------------------------------------------------------------
-  // Modal Interactions
+  // Activity Modal Handlers
+  // --------------------------------------------------------------------------
+  function openActivityModal() {
+    renderActivityList();
+    activityModal.classList.add('open');
+    activityModal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeActivityModal() {
+    activityModal.classList.remove('open');
+    activityModal.setAttribute('aria-hidden', 'true');
+  }
+
+  btnViewActivity.addEventListener('click', openActivityModal);
+  navActivity.addEventListener('click', (e) => {
+    e.preventDefault();
+    openActivityModal();
+  });
+  btnCloseActivityModal.addEventListener('click', closeActivityModal);
+  btnCloseActivity.addEventListener('click', closeActivityModal);
+
+  activityModal.addEventListener('click', (e) => {
+    if (e.target === activityModal) closeActivityModal();
+  });
+
+  function renderActivityList() {
+    const history = midnightAuctionService.getTxHistory();
+    if (history.length === 0) {
+      activityListContainer.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px;">No on-chain transactions recorded yet.</div>';
+      return;
+    }
+
+    activityListContainer.innerHTML = history.map((tx) => `
+      <div class="activity-item">
+        <div class="activity-info">
+          <div class="activity-action">
+            <i class="fa-solid ${tx.action === 'place_bid' ? 'fa-shield-halved' : tx.action === 'reveal_bid' ? 'fa-eye' : 'fa-rocket'}" style="color:#38ef7d;"></i>
+            <span>${tx.action === 'place_bid' ? 'Placed Sealed Bid' : tx.action === 'reveal_bid' ? `Revealed Bid (${tx.amount} tDUST)` : 'Contract Genesis Initialize'}</span>
+          </div>
+          <span class="activity-time">${new Date(tx.timestamp).toLocaleString()}</span>
+        </div>
+        <div class="activity-links">
+          <span class="badge-confirmed">CONFIRMED</span>
+          <a href="${tx.explorerTxUrl}" target="_blank" class="explorer-btn">
+            1AM Explorer <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i>
+          </a>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // --------------------------------------------------------------------------
+  // Modal Interactions (Bid & Reveal)
   // --------------------------------------------------------------------------
   function openBidModal(mode: 'place' | 'reveal') {
     currentModalMode = mode;
@@ -118,17 +183,20 @@ document.addEventListener('DOMContentLoaded', () => {
     bidModal.setAttribute('aria-hidden', 'false');
     resetZkTracker();
     zkOutputPreview.style.display = 'none';
+    progressStatusBanner.style.display = 'none';
 
     const btnText = btnSubmitZkBid.querySelector('.btn-text') as HTMLElement;
 
     if (mode === 'place') {
       modalHeading.textContent = "Submit ZK Sealed Bid";
+      modalSubtitle.textContent = "Private witness generated in local memory; secret is never exposed to DOM.";
       groupBidAmount.style.display = 'flex';
       btnText.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Generate Proof & Place Bid';
       inputBidAmount.value = '';
       inputBidAmount.focus();
     } else {
       modalHeading.textContent = "Reveal Sealed Bid & Verify Winner";
+      modalSubtitle.textContent = "Proves preimage knowledge from private local storage to resolve the auction.";
       groupBidAmount.style.display = 'none';
       btnText.innerHTML = '<i class="fa-solid fa-eye"></i> Prove Knowledge & Reveal';
     }
@@ -137,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeBidModal() {
     bidModal.classList.remove('open');
     bidModal.setAttribute('aria-hidden', 'true');
+    progressStatusBanner.style.display = 'none';
   }
 
   btnCloseModal.addEventListener('click', closeBidModal);
@@ -159,6 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const spinner = btnSubmitZkBid.querySelector('.spinner') as HTMLElement;
     btnText.style.display = 'none';
     spinner.style.display = 'inline-block';
+    progressStatusBanner.style.display = 'flex';
 
     try {
       if (currentModalMode === 'place') {
@@ -168,13 +238,15 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
-        const result = await midnightAuctionService.placeSealedBid(amount, (step) => {
+        const result = await midnightAuctionService.placeSealedBid(amount, (step, msg) => {
           setZkStep(step);
+          if (msg) progressStatusText.textContent = msg;
         });
 
         previewCommitment.textContent = result.commitment;
         previewTxHash.innerHTML = `<a href="${result.explorerTxUrl}" target="_blank" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 14)}... (View on 1AM Explorer)</a>`;
         zkOutputPreview.style.display = 'flex';
+        progressStatusBanner.style.display = 'none';
 
         showToast(`ZK Bid successfully submitted to Midnight Preview Testnet!`, "success");
 
@@ -192,13 +264,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       } else {
         // Reveal mode
-        const result = await midnightAuctionService.revealLatestBid((step) => {
+        const result = await midnightAuctionService.revealLatestBid((step, msg) => {
           setZkStep(step);
+          if (msg) progressStatusText.textContent = msg;
         });
 
         previewCommitment.textContent = `Amount: ${result.amount} tDUST`;
         previewTxHash.innerHTML = `<a href="${result.explorerTxUrl}" target="_blank" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 14)}... (View on 1AM Explorer)</a>`;
         zkOutputPreview.style.display = 'flex';
+        progressStatusBanner.style.display = 'none';
 
         if (result.isWinner) {
           showToast(`🏆 Congratulations! You hold the highest bid: ${result.amount} tDUST!`, "success");
@@ -216,7 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2800);
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Circuit execution failed";
+      progressStatusBanner.style.display = 'none';
+      const errorMessage = err instanceof Error ? err.message : "Circuit execution failed or rejected by wallet.";
       showToast(errorMessage, "error");
     } finally {
       btnSubmitZkBid.disabled = false;

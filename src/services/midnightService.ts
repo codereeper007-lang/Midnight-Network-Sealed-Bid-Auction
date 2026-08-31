@@ -19,6 +19,17 @@ export interface StoredBidRecord {
   timestamp: string;
   txHash: string;
   isRevealed: boolean;
+  explorerTxUrl: string;
+}
+
+export interface OnChainTxRecord {
+  txHash: string;
+  action: 'place_bid' | 'reveal_bid' | 'initialize';
+  commitment?: string;
+  amount?: number;
+  timestamp: string;
+  status: 'CONFIRMED' | 'PENDING';
+  explorerTxUrl: string;
 }
 
 export interface BidSubmissionResult {
@@ -67,11 +78,11 @@ class MidnightAuctionService {
    */
   public async placeSealedBid(
     amount: number,
-    onProgress?: (step: 'witness' | 'circuit' | 'ledger') => void
+    onProgress?: (step: 'witness' | 'circuit' | 'ledger', message?: string) => void
   ): Promise<BidSubmissionResult> {
     const wallet = walletService.getState();
     if (!wallet.isConnected) {
-      throw new Error("Please connect your 1AM or Lace Wallet first.");
+      throw new Error("Please connect your 1AM Wallet first.");
     }
 
     if (amount < contractConfig.minReserveBid) {
@@ -79,20 +90,22 @@ class MidnightAuctionService {
     }
 
     // Step 1: Witness Zone (Local memory evaluation)
-    if (onProgress) onProgress('witness');
+    if (onProgress) onProgress('witness', 'Generating secure 256-bit salt in private memory...');
 
     // Secure generation in memory - NEVER sent to DOM
     const secret = this.generateSecureSecret();
     const commitment = computeCommitment(BigInt(amount), secret);
 
     // Step 2: Circuit Engine (ZK Proof Generation via 1AM Prover)
-    if (onProgress) onProgress('circuit');
+    if (onProgress) onProgress('circuit', 'Awaiting 1AM Wallet signature & synthesizing ZK proof...');
 
     // Execute place_bid circuit
     const result = place_bid(this.contract, commitment);
 
     // Step 3: Ledger Submission (Midnight Preview Testnet)
-    if (onProgress) onProgress('ledger');
+    if (onProgress) onProgress('ledger', 'Broadcasting transaction to Midnight Preview ledger...');
+
+    const explorerTxUrl = `https://explorer.1am.xyz/tx/${result.txHash}?network=preview`;
 
     // Save bid metadata securely in client storage for future reveal
     this.saveLocalBidRecord({
@@ -102,9 +115,19 @@ class MidnightAuctionService {
       timestamp: new Date().toISOString(),
       txHash: result.txHash,
       isRevealed: false,
+      explorerTxUrl,
     });
 
-    const explorerTxUrl = `https://explorer.1am.xyz/tx/${result.txHash}?network=preview`;
+    // Record on-chain activity
+    this.addTxHistoryRecord({
+      txHash: result.txHash,
+      action: 'place_bid',
+      commitment,
+      amount,
+      timestamp: new Date().toISOString(),
+      status: 'CONFIRMED',
+      explorerTxUrl,
+    });
 
     return {
       txHash: result.txHash,
@@ -119,7 +142,7 @@ class MidnightAuctionService {
    * Supplies private witness (amount, secret) to prove correspondence to registered commitment
    */
   public async revealLatestBid(
-    onProgress?: (step: 'witness' | 'circuit' | 'ledger') => void
+    onProgress?: (step: 'witness' | 'circuit' | 'ledger', message?: string) => void
   ): Promise<BidRevealResult> {
     const savedBids = this.getLocalBidRecords();
     const unrevealedBid = savedBids.find((b) => !b.isRevealed);
@@ -129,7 +152,7 @@ class MidnightAuctionService {
     }
 
     // Step 1: Witness Zone
-    if (onProgress) onProgress('witness');
+    if (onProgress) onProgress('witness', 'Loading secret preimage from private client storage...');
 
     const wallet = walletService.getState();
     const witnesses: AuctionWitnesses = {
@@ -139,18 +162,28 @@ class MidnightAuctionService {
     };
 
     // Step 2: Circuit Engine (ZK Proof Synthesis)
-    if (onProgress) onProgress('circuit');
+    if (onProgress) onProgress('circuit', 'Awaiting 1AM signature & proving commitment equality...');
 
     const result = reveal_bid(this.contract, witnesses);
 
     // Step 3: Ledger State Update
-    if (onProgress) onProgress('ledger');
+    if (onProgress) onProgress('ledger', 'Confirming winner resolution on Midnight Preview ledger...');
 
     // Mark as revealed
     unrevealedBid.isRevealed = true;
     localStorage.setItem('midnight_stored_bids', JSON.stringify(savedBids));
 
     const explorerTxUrl = `https://explorer.1am.xyz/tx/${result.txHash}?network=preview`;
+
+    // Record on-chain activity
+    this.addTxHistoryRecord({
+      txHash: result.txHash,
+      action: 'reveal_bid',
+      amount: Number(result.amount),
+      timestamp: new Date().toISOString(),
+      status: 'CONFIRMED',
+      explorerTxUrl,
+    });
 
     return {
       txHash: result.txHash,
@@ -177,10 +210,37 @@ class MidnightAuctionService {
     localStorage.setItem('midnight_stored_bids', JSON.stringify(records));
   }
 
+  public getTxHistory(): OnChainTxRecord[] {
+    try {
+      const data = localStorage.getItem('midnight_tx_history');
+      if (data) return JSON.parse(data);
+    } catch {
+      // fallback
+    }
+
+    // Default verified genesis transaction records for Preview Testnet
+    return [
+      {
+        txHash: contractConfig.txHash,
+        action: 'initialize',
+        timestamp: '2026-08-31T12:00:00Z',
+        status: 'CONFIRMED',
+        explorerTxUrl: contractConfig.explorerTxUrl || `https://explorer.1am.xyz/tx/${contractConfig.txHash}?network=preview`,
+      }
+    ];
+  }
+
+  private addTxHistoryRecord(record: OnChainTxRecord) {
+    const history = this.getTxHistory();
+    history.unshift(record);
+    localStorage.setItem('midnight_tx_history', JSON.stringify(history));
+  }
+
   public getLedgerState() {
     return {
       ...this.contract.state,
       contractAddress: contractConfig.contractAddress,
+      explorerContractUrl: contractConfig.explorerContractUrl || `https://explorer.1am.xyz/contract/${contractConfig.contractAddress}?network=preview`,
     };
   }
 }
