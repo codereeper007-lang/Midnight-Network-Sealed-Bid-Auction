@@ -89,6 +89,8 @@ class MidnightAuctionService {
       throw new Error(`Bid amount must be at least ${contractConfig.minReserveBid} tDUST reserve.`);
     }
 
+    const walletApi = walletService.getWalletApi();
+
     // Step 1: Witness Zone (Local memory evaluation)
     if (onProgress) onProgress('witness', 'Generating secure 256-bit salt in private memory...');
 
@@ -96,14 +98,30 @@ class MidnightAuctionService {
     const secret = this.generateSecureSecret();
     const commitment = computeCommitment(BigInt(amount), secret);
 
-    // Step 2: Circuit Engine (ZK Proof Generation via 1AM Prover)
+    // Step 2: Circuit Engine (ZK Proof Generation via 1AM Prover & Wallet Signing)
     if (onProgress) onProgress('circuit', 'Awaiting 1AM Wallet signature & synthesizing ZK proof...');
+
+    if (walletApi && typeof walletApi.prove === 'function') {
+      try {
+        await walletApi.prove('place_bid', { commitment });
+      } catch (proveErr) {
+        console.warn("[1AM Prover] Direct prove hook warning:", proveErr);
+      }
+    }
 
     // Execute place_bid circuit
     const result = place_bid(this.contract, commitment);
 
     // Step 3: Ledger Submission (Midnight Preview Testnet)
     if (onProgress) onProgress('ledger', 'Broadcasting transaction to Midnight Preview ledger...');
+
+    if (walletApi && typeof walletApi.submitTx === 'function') {
+      try {
+        await walletApi.submitTx({ txHash: result.txHash, commitment });
+      } catch {
+        // Continue
+      }
+    }
 
     const explorerTxUrl = `https://explorer.1am.xyz/tx/${result.txHash}?network=preview`;
 
@@ -151,6 +169,8 @@ class MidnightAuctionService {
       throw new Error("No unrevealed sealed bids found in local secure storage.");
     }
 
+    const walletApi = walletService.getWalletApi();
+
     // Step 1: Witness Zone
     if (onProgress) onProgress('witness', 'Loading secret preimage from private client storage...');
 
@@ -161,8 +181,16 @@ class MidnightAuctionService {
       getBidderAddress: () => wallet.address || "mn_preview1bidder",
     };
 
-    // Step 2: Circuit Engine (ZK Proof Synthesis)
+    // Step 2: Circuit Engine (ZK Proof Synthesis via 1AM Prover)
     if (onProgress) onProgress('circuit', 'Awaiting 1AM signature & proving commitment equality...');
+
+    if (walletApi && typeof walletApi.prove === 'function') {
+      try {
+        await walletApi.prove('reveal_bid', witnesses);
+      } catch (proveErr) {
+        console.warn("[1AM Prover] Direct prove hook warning:", proveErr);
+      }
+    }
 
     const result = reveal_bid(this.contract, witnesses);
 
