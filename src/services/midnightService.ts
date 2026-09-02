@@ -4,10 +4,8 @@
  */
 import {
   SealedBidAuctionContract,
-  place_bid,
-  reveal_bid,
-  computeCommitment,
   AuctionWitnesses,
+  computeCommitment,
 } from '../../managed/auction/index.ts';
 import { walletService } from './wallet.ts';
 import { indexerService, IndexerContractState } from './indexerService.ts';
@@ -99,7 +97,7 @@ class MidnightAuctionService {
    * 1. Generates 256-bit secure secret in memory (NEVER exposed to DOM)
    * 2. Computes ZK commitment = H(secret, H(amount))
    * 3. Calls 1AM Wallet DApp connector to generate ZK proof and sign
-   * 4. Discloses commitment to the Midnight blockchain ledger via place_bid circuit
+   * 4. Discloses commitment to the Midnight blockchain ledger via callTx.place_bid
    * 5. Persists the secret locally in encrypted client storage for the reveal phase
    * 6. Appends confirmed transaction record to localStorage and notifies UI
    */
@@ -136,8 +134,8 @@ class MidnightAuctionService {
       }
     }
 
-    // Execute place_bid circuit
-    const result = place_bid(this.contract, commitment);
+    // Execute genuine callTx.place_bid circuit invocation
+    const result = await this.contract.callTx.place_bid(commitment);
 
     // Step 3: Ledger Submission (Midnight Preview Testnet)
     if (onProgress) onProgress('ledger', 'Broadcasting transaction to Midnight Preview Testnet...');
@@ -192,7 +190,7 @@ class MidnightAuctionService {
 
   /**
    * Reveal Bid Phase:
-   * Supplies private witness (amount, secret) to prove correspondence to registered commitment
+   * Supplies private witness (amount, secret) to prove correspondence to registered commitment via callTx.reveal_bid
    */
   public async revealLatestBid(
     onProgress?: (step: 'witness' | 'circuit' | 'ledger', message?: string) => void
@@ -227,7 +225,8 @@ class MidnightAuctionService {
       }
     }
 
-    const result = reveal_bid(this.contract, witnesses);
+    // Execute genuine callTx.reveal_bid circuit invocation
+    const result = await this.contract.callTx.reveal_bid(witnesses);
 
     // Step 3: Ledger State Update
     if (onProgress) onProgress('ledger', 'Confirming winner resolution on Midnight Preview ledger...');
@@ -257,7 +256,7 @@ class MidnightAuctionService {
     this.addTxHistoryRecord({
       action: 'REVEAL_BID',
       txHash: actualTxHash,
-      amount: Number(result.amount),
+      amount: Number(result.result?.amount || 0n),
       timestamp: Date.now(),
       network: 'preview',
       status: 'CONFIRMED',
@@ -266,8 +265,8 @@ class MidnightAuctionService {
 
     return {
       txHash: actualTxHash,
-      amount: Number(result.amount),
-      isWinner: result.isWinner,
+      amount: Number(result.result?.amount || 0n),
+      isWinner: Boolean(result.result?.isWinner),
       highestBid: Number(result.state.highestBid),
       winner: result.state.winner,
       explorerTxUrl,

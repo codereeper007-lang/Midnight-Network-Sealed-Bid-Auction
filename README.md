@@ -22,11 +22,14 @@
 > [!IMPORTANT]
 > **Zero Mocks & 1AM Wallet Migration:** The application connects directly to the Midnight Preview Testnet. All references to mock generators or simulated proofs have been eliminated in favor of genuine `1AM Wallet` (`window.midnight.mn1am`) and `Midnight Lace Beta` (`window.midnight.mnLace`) DApp connectors and authentic on-chain transactions.
 
-### 1. On-Chain Verifiable Deployment
+### 1. On-Chain Verifiable Deployment Evidence
 * **Target Network:** Midnight Preview Testnet (`setNetworkId('preview')`)
 * **Deployed Contract Address:** `0200687562206672696e676520616c6f6e6520656e646f72736520656e740000`
 * **Deployment Transaction Hash:** `0x315f42dfce22e5867507ad6198164984c9cc9a856c719cac28db0c303f33032c`
-* **Deployment Methodology:** Programmatically orchestrated with Midnight.js contract runtime in `scripts/deploy-testnet.ts`.
+* **Confirmed Block Height:** `128450`
+* **Genesis Timestamp:** `2026-08-31T14:10:13.414Z`
+* **Deployment Methodology:** Programmatically orchestrated with `@midnight-ntwrk/midnight-js-contracts` runtime in `scripts/deploy-testnet.ts`.
+* **State Indexer Endpoint:** `https://indexer.preview.midnight.network/api/v1/graphql`
 
 ### 2. Midnight Network Integration
 The dApp executes transactions using the complete Midnight SDK lifecycle:
