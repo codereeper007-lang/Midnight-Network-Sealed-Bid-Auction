@@ -1,6 +1,6 @@
 /**
  * Genuine Midnight Preview Testnet Contract Deployment Script
- * Utilizes Midnight.js Network Provider, Indexer Client, and Compact Contract Bindings
+ * Utilizes @midnight-ntwrk/midnight-js-contracts and Compact Contract Bindings
  */
 import * as fs from 'fs';
 import * as path from 'path';

@@ -55,18 +55,18 @@ export class IndexerService {
         const json = await response.json();
         if (json.data?.status) {
           return {
-            blockHeight: json.data.status.currentBlockHeight || 128450,
+            blockHeight: json.data.status.currentBlockHeight || 0,
             networkId: json.data.status.networkId || 'preview',
             isSynced: Boolean(json.data.status.isSynced),
           };
         }
       }
     } catch {
-      // Fallback if indexer has CORS restriction in dev browser
+      // Fallback
     }
 
     return {
-      blockHeight: 128450,
+      blockHeight: 0,
       networkId: 'preview',
       isSynced: true,
     };
@@ -98,8 +98,8 @@ export class IndexerService {
           const rawState = json.data.contract.state;
           return {
             contractAddress,
-            totalBids: rawState.totalBids ?? 48,
-            highestBid: rawState.highestBid ?? 2450,
+            totalBids: rawState.totalBids ?? 0,
+            highestBid: rawState.highestBid ?? 0,
             isOpen: rawState.isOpen ?? true,
             minReserveBid: rawState.minReserveBid ?? contractConfig.minReserveBid,
           };
@@ -111,8 +111,8 @@ export class IndexerService {
 
     return {
       contractAddress,
-      totalBids: 48,
-      highestBid: 2450,
+      totalBids: 0,
+      highestBid: 0,
       isOpen: contractConfig.isOpen,
       minReserveBid: contractConfig.minReserveBid,
     };

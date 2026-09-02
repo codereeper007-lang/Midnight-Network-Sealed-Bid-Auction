@@ -59,8 +59,8 @@ class MidnightAuctionService {
     this.contract = new SealedBidAuctionContract({
       isOpen: contractConfig.isOpen,
       minReserveBid: BigInt(contractConfig.minReserveBid),
-      totalBids: 48n,
-      highestBid: 2450n,
+      totalBids: 0n,
+      highestBid: 0n,
     });
   }
 
@@ -83,7 +83,7 @@ class MidnightAuctionService {
   }
 
   /**
-   * Sync contract state from Preview GraphQL Indexer
+   * Sync contract state from Preview GraphQL Indexer directly without fake number fallbacks
    */
   public async syncWithIndexer(): Promise<IndexerContractState> {
     const onChainState = await indexerService.getContractState(contractConfig.contractAddress);

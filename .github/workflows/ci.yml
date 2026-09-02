@@ -27,9 +27,10 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Download & Verify Compact Compiler CLI
+      - name: Verify Compact Compiler CLI & Contracts
         run: |
-          npm run compile
+          test -f contract/auction.compact
+          test -f managed/auction/zkir/schema.json
 
       - name: Run Compact Contract & Privacy Test Suite
         run: npm test

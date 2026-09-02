@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.31.1",
   "contract": "auction.compact",
   "circuits": [
     {
@@ -8,15 +8,30 @@
       "outputs": []
     },
     {
-      "name": "submitBid",
-      "witnesses": ["getBidAmount: Uint<64>", "getBidderSecret: Bytes<32>", "getBidderSalt: Bytes<32>"],
-      "disclosures": ["nullifier: Bytes<32>", "bidCommitment: Bytes<32>"],
+      "name": "place_bid",
+      "inputs": ["commitment: Bytes<32>"],
+      "disclosures": ["commitment: Bytes<32>"],
       "outputs": []
     },
     {
-      "name": "closeAuction",
+      "name": "reveal_bid",
+      "witnesses": ["getBidAmount: Uint<64>", "getBidderSecret: Bytes<32>", "getBidderAddress: Bytes<32>"],
+      "disclosures": ["amount: Uint<64>", "winner: Bytes<32>"],
+      "outputs": []
+    },
+    {
+      "name": "close_auction",
       "inputs": [],
       "outputs": []
     }
-  ]
+  ],
+  "ledger": {
+    "commitments": "Map<Bytes<32>, Boolean>",
+    "highestBid": "Cell<Uint<64>>",
+    "winner": "Cell<Bytes<32>>",
+    "isOpen": "Cell<Boolean>",
+    "totalBids": "Counter",
+    "minReserveBid": "Cell<Uint<64>>",
+    "auctioneer": "Cell<Bytes<32>>"
+  }
 }

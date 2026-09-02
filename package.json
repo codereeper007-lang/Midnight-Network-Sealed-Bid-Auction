@@ -9,20 +9,21 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "compile": "compact compile contracts/auction.compact --out-dir managed/ || echo 'Compiled via managed bindings'",
+    "compile": "compact compile contract/auction.compact --out-dir managed/",
     "deploy:preview": "tsx scripts/deploy-testnet.ts",
-    "compact:compile": "compact compile contracts/auction.compact --out-dir managed/ || echo 'Using managed bindings'"
+    "compact:compile": "compact compile contract/auction.compact --out-dir managed/"
   },
   "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "^0.16.0",
     "@midnight-ntwrk/dapp-connector-api": "^4.0.1",
-    "@midnight-ntwrk/compact-runtime": "^0.16.0"
+    "@midnight-ntwrk/midnight-js-contracts": "^4.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.5.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.2",
-    "vitest": "^2.0.5",
-    "tsx": "^4.19.0"
+    "vitest": "^2.0.5"
   },
   "engines": {
     "node": ">=20.0.0"
