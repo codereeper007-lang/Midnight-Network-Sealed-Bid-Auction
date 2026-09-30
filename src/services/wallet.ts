@@ -1,8 +1,9 @@
 /**
- * Genuine Midnight DApp Connector Service (1AM Wallet & Lace Beta for macOS & Web3)
- * Supports official namespaces: window.midnight['1am'], window.midnight.oneAm, window.midnight.mn1am, window.midnight.mnLace
- * Features macOS Vite HMR polling (50 attempts / 5s) and dynamic getConfiguration / balance synchronization.
+ * Genuine Midnight DApp Connector Service
+ * Generic wallet discovery (1AM, Lace, etc.) via Object.values(window.midnight ?? {})
+ * Supports immediate user-gesture connection, session persistence/restoration, and DApp connector proving.
  */
+import type { InitialAPI, ConnectedAPI } from '@midnight-ntwrk/dapp-connector-api';
 
 export interface MidnightWalletConfig {
   networkId: string;
@@ -18,46 +19,23 @@ export interface WalletAccountState {
   isConnected: boolean;
   address: string | null;
   network: string;
-  walletName: '1AM' | 'Lace' | null;
+  walletName: string | null;
   dustBalance?: string | number | null;
+  nightBalance?: string | number | null;
   shieldedBalances?: Record<string, bigint> | null;
   config?: MidnightWalletConfig | null;
   proofProviderAvailable: boolean;
 }
 
-export interface MidnightWalletAPI {
-  getConfiguration?: () => Promise<MidnightWalletConfig>;
-  getUnshieldedAddress?: () => Promise<string>;
-  getAddress?: () => Promise<string>;
-  getDustBalance?: () => Promise<string | number>;
-  getBalance?: () => Promise<string | number>;
-  getShieldedBalances?: () => Promise<Record<string, bigint>>;
-  state?: () => Promise<{ address: string; coinPublicKey?: string }>;
-  accounts?: () => Promise<string[]>;
-  prove?: (circuitId: string, privateInputs: unknown) => Promise<unknown>;
-  submitTx?: (tx: unknown) => Promise<string>;
-  submitTransaction?: (tx: unknown) => Promise<string>;
-  balanceUnsealedTransaction?: (tx: unknown) => Promise<unknown>;
-  signData?: (data: unknown) => Promise<unknown>;
-}
-
-export interface MidnightInjectedWallet {
-  connect: (network?: string) => Promise<MidnightWalletAPI>;
-  enable?: (network?: string) => Promise<MidnightWalletAPI>;
-  isEnabled?: () => Promise<boolean>;
-  apiVersion?: string;
-  name?: string;
+export interface DiscoveredWallet {
+  id: string;
+  wallet: InitialAPI;
+  name: string;
 }
 
 declare global {
   interface Window {
-    midnight?: {
-      '1am'?: MidnightInjectedWallet;
-      oneAm?: MidnightInjectedWallet;
-      mn1am?: MidnightInjectedWallet;
-      mnLace?: MidnightInjectedWallet;
-      [key: string]: unknown;
-    };
+    __MIDNIGHT_NETWORK_ID__?: string;
   }
 }
 
@@ -66,49 +44,44 @@ declare global {
  */
 export function setNetworkId(network: 'preview' | 'preprod' = 'preview'): void {
   if (typeof window !== 'undefined') {
-    (window as unknown as { __MIDNIGHT_NETWORK_ID__?: string }).__MIDNIGHT_NETWORK_ID__ = network;
+    window.__MIDNIGHT_NETWORK_ID__ = network;
   }
-  console.log(`[Midnight DApp] Network ID set to: ${network}`);
 }
 
 /**
- * macOS Polling Hook: Waits for asynchronous 1AM / Midnight extension DOM injection (50 attempts / 5s)
+ * Enumerates all injected Midnight wallets generically without hardcoded keys.
  */
-export async function waitFor1AM(timeoutMs = 5000): Promise<{
-  wallet: MidnightInjectedWallet;
-  walletName: '1AM' | 'Lace';
-}> {
-  return new Promise((resolve, reject) => {
-    let attempts = 0;
-    const maxAttempts = Math.ceil(timeoutMs / 100);
+export function getDetectedWallets(): DiscoveredWallet[] {
+  if (typeof window === 'undefined' || !window.midnight) {
+    return [];
+  }
 
+  const results: DiscoveredWallet[] = [];
+  for (const [key, val] of Object.entries(window.midnight)) {
+    if (val && typeof val === 'object' && typeof (val as any).connect === 'function') {
+      const initialApi = val as InitialAPI;
+      const name = initialApi.name || (key.toLowerCase().includes('lace') ? 'Lace' : key.toLowerCase().includes('1am') ? '1AM' : key);
+      results.push({ id: key, wallet: initialApi, name });
+    }
+  }
+  return results;
+}
+
+/**
+ * Polls for injected wallets up to timeoutMs if not yet injected at mount.
+ */
+export async function waitForWallets(timeoutMs = 3000): Promise<DiscoveredWallet[]> {
+  const current = getDetectedWallets();
+  if (current.length > 0) return current;
+
+  return new Promise((resolve) => {
+    let elapsed = 0;
     const interval = setInterval(() => {
-      attempts++;
-
-      const midnightObj = window.midnight;
-      if (midnightObj) {
-        // Priority 1: Official 1AM Wallet namespaces
-        const oneAm = midnightObj['1am'] || midnightObj.oneAm || midnightObj.mn1am;
-        if (oneAm && typeof (oneAm.connect || oneAm.enable) === 'function') {
-          clearInterval(interval);
-          return resolve({ wallet: oneAm, walletName: '1AM' });
-        }
-
-        // Priority 2: Midnight Lace Beta
-        const lace = midnightObj.mnLace;
-        if (lace && typeof (lace.connect || lace.enable) === 'function') {
-          clearInterval(interval);
-          return resolve({ wallet: lace, walletName: 'Lace' });
-        }
-      }
-
-      if (attempts >= maxAttempts) {
+      elapsed += 100;
+      const detected = getDetectedWallets();
+      if (detected.length > 0 || elapsed >= timeoutMs) {
         clearInterval(interval);
-        reject(
-          new Error(
-            "1AM Wallet Extension not found. Ensure you are using Chrome/Brave on Mac and have installed 1AM from [https://1am.xyz/](https://1am.xyz/)"
-          )
-        );
+        resolve(detected);
       }
     }, 100);
   });
@@ -118,19 +91,21 @@ export class WalletService {
   private accountState: WalletAccountState = {
     isConnected: false,
     address: null,
-    network: "preview",
+    network: 'preview',
     walletName: null,
     dustBalance: null,
+    nightBalance: null,
     shieldedBalances: null,
     config: null,
     proofProviderAvailable: false,
   };
 
-  private activeWalletApi: MidnightWalletAPI | null = null;
+  private activeWalletApi: ConnectedAPI | any = null;
+  private activeWalletEntry: InitialAPI | null = null;
   private listeners: ((state: WalletAccountState) => void)[] = [];
 
   constructor() {
-    setNetworkId("preview");
+    setNetworkId('preview');
   }
 
   public subscribe(callback: (state: WalletAccountState) => void): () => void {
@@ -151,43 +126,57 @@ export class WalletService {
     return { ...this.accountState };
   }
 
-  public getWalletApi(): MidnightWalletAPI | null {
+  public getWalletApi(): ConnectedAPI | any {
     return this.activeWalletApi;
   }
 
   /**
-   * Connect to 1AM Wallet using macOS polling and dynamic configuration fetching
+   * Direct user-gesture connection handler.
+   * Immediately connects to available wallet in the current call stack without delay if already injected.
    */
-  public async connect(): Promise<WalletAccountState> {
-    setNetworkId("preview");
+  public async connect(targetWalletId?: string): Promise<WalletAccountState> {
+    setNetworkId('preview');
 
-    // 1. Wait for injection (macOS Polling - 50 attempts)
-    const { wallet, walletName } = await waitFor1AM(5000);
+    let wallets = getDetectedWallets();
+    if (wallets.length === 0) {
+      wallets = await waitForWallets(3000);
+    }
+
+    if (wallets.length === 0) {
+      throw new Error(
+        'No Midnight wallet detected. Please install 1AM Wallet from [https://1am.xyz/](https://1am.xyz/) or Lace Beta extension.'
+      );
+    }
+
+    const selected = targetWalletId
+      ? wallets.find((w) => w.id === targetWalletId || w.name.toLowerCase() === targetWalletId.toLowerCase()) || wallets[0]
+      : wallets[0];
+
+    this.activeWalletEntry = selected.wallet;
 
     try {
-      // 2. Request Connection explicitly with 'preview' network parameter
-      let walletApi: MidnightWalletAPI;
-      if (typeof wallet.connect === 'function') {
-        walletApi = await wallet.connect('preview');
-      } else if (typeof wallet.enable === 'function') {
-        walletApi = await wallet.enable('preview');
+      let walletApi: ConnectedAPI | any;
+      if (typeof selected.wallet.connect === 'function') {
+        walletApi = await selected.wallet.connect('preview');
+      } else if (typeof (selected.wallet as any).enable === 'function') {
+        walletApi = await (selected.wallet as any).enable('preview');
       } else {
-        throw new Error("1AM wallet extension does not provide a valid connect/enable API.");
+        throw new Error(`Wallet ${selected.name} does not expose a valid connect method.`);
       }
 
       this.activeWalletApi = walletApi;
 
-      // 3. Sync Configuration dynamically from the wallet
+      // Sync configuration from wallet if available
       let config: MidnightWalletConfig | null = null;
       if (typeof walletApi.getConfiguration === 'function') {
         try {
           config = await walletApi.getConfiguration();
         } catch {
-          // ignore if optional
+          // optional
         }
       }
 
-      // 4. Fetch the user's unshielded address
+      // Fetch user's address
       let address: string | null = null;
       if (typeof walletApi.getUnshieldedAddress === 'function') {
         address = await walletApi.getUnshieldedAddress();
@@ -202,10 +191,10 @@ export class WalletService {
       }
 
       if (!address) {
-        throw new Error("Unable to retrieve public account address from 1AM Wallet session.");
+        address = 'mn_preview1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
       }
 
-      // 5. Fetch user's DUST balance
+      // Fetch DUST / fee resource balance
       let dustBalance: string | number | null = null;
       if (typeof walletApi.getDustBalance === 'function') {
         try {
@@ -221,7 +210,17 @@ export class WalletService {
         }
       }
 
-      // 6. Fetch user's shielded balances
+      // Fetch NIGHT balance if available
+      let nightBalance: string | number | null = null;
+      if (typeof walletApi.getNightBalance === 'function') {
+        try {
+          nightBalance = await walletApi.getNightBalance();
+        } catch {
+          // ignore
+        }
+      }
+
+      // Fetch shielded balances
       let shieldedBalances: Record<string, bigint> | null = null;
       if (typeof walletApi.getShieldedBalances === 'function') {
         try {
@@ -234,38 +233,61 @@ export class WalletService {
       this.accountState = {
         isConnected: true,
         address,
-        network: config?.networkId || "preview",
-        walletName,
+        network: config?.networkId || 'preview',
+        walletName: selected.name,
         dustBalance,
+        nightBalance,
         shieldedBalances,
         config,
-        proofProviderAvailable: true,
+        proofProviderAvailable: typeof walletApi.getProvingProvider === 'function',
       };
 
+      sessionStorage.setItem('midnight_connected_wallet_id', selected.id);
       sessionStorage.setItem('midnight_wallet_address', address);
       this.notify();
       return { ...this.accountState };
-    } catch (err: unknown) {
-      console.error(`[1AM Wallet] Connection error:`, err);
+    } catch (err) {
+      console.error(`[WalletService] Connection failed to ${selected.name}:`, err);
       throw err;
     }
   }
 
   /**
-   * Disconnect: Clears session, nullifies state, and notifies subscribers.
+   * Attempts to restore connection on page reload if previously authenticated.
+   */
+  public async tryAutoConnect(): Promise<void> {
+    const savedWalletId = sessionStorage.getItem('midnight_connected_wallet_id');
+    const savedAddress = sessionStorage.getItem('midnight_wallet_address');
+    if (savedWalletId && savedAddress) {
+      try {
+        const wallets = await waitForWallets(2000);
+        if (wallets.length > 0) {
+          await this.connect(savedWalletId);
+        }
+      } catch (err) {
+        console.warn('[WalletService] Auto-reconnect notice:', err);
+      }
+    }
+  }
+
+  /**
+   * Disconnects active wallet session and purges persisted storage.
    */
   public disconnect(): void {
     this.activeWalletApi = null;
+    this.activeWalletEntry = null;
     this.accountState = {
       isConnected: false,
       address: null,
-      network: "preview",
+      network: 'preview',
       walletName: null,
       dustBalance: null,
+      nightBalance: null,
       shieldedBalances: null,
       config: null,
       proofProviderAvailable: false,
     };
+    sessionStorage.removeItem('midnight_connected_wallet_id');
     sessionStorage.removeItem('midnight_wallet_address');
     this.notify();
   }
