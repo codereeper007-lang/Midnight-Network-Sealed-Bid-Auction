@@ -9,20 +9,26 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "compile": "compact compile contract/auction.compact --out-dir managed/",
+    "compile": "compact compile contract/auction.compact managed/auction",
     "deploy:preview": "tsx scripts/deploy-testnet.ts",
-    "compact:compile": "compact compile contract/auction.compact --out-dir managed/"
+    "compact:compile": "compact compile contract/auction.compact managed/auction"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "^0.16.0",
     "@midnight-ntwrk/dapp-connector-api": "^4.0.1",
-    "@midnight-ntwrk/midnight-js-contracts": "^4.1.1"
+    "@midnight-ntwrk/midnight-js-contracts": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "^4.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.5.0",
     "tsx": "^4.19.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.2",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "vite-plugin-wasm": "^3.6.0",
     "vitest": "^2.0.5"
   },
   "engines": {

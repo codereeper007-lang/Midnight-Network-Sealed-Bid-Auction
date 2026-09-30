@@ -1,65 +1,49 @@
-// Midnight Sealed-Bid Auction Smart Contract
-// Target: Midnight Preview Testnet (Compact 0.31+)
+import CompactStandardLibrary;
 
-include "std";
-
-ledger {
-  commitments: Map<Bytes<32>, Boolean>;
-  highestBid: Cell<Uint<64>>;
-  winner: Cell<Bytes<32>>;
-  isOpen: Cell<Boolean>;
-  totalBids: Counter;
-  minReserveBid: Cell<Uint<64>>;
-  auctioneer: Cell<Bytes<32>>;
-}
+export ledger commitments: Map<Bytes<32>, Boolean>;
+export ledger highestBid: Uint<64>;
+export ledger winner: Bytes<32>;
+export ledger isOpen: Boolean;
+export ledger totalBids: Counter;
+export ledger minReserveBid: Uint<64>;
+export ledger auctioneer: Bytes<32>;
 
 witness getBidAmount(): Uint<64>;
 witness getBidderSecret(): Bytes<32>;
 witness getBidderAddress(): Bytes<32>;
 
-export circuit initialize(reserve: Uint<64>, adminPubKey: Bytes<32>): [] {
+constructor(reserve: Uint<64>, adminPubKey: Bytes<32>) {
   isOpen = true;
   totalBids.increment(0);
-  minReserveBid = reserve;
+  minReserveBid = disclose(reserve);
   highestBid = 0;
-  winner = 0x0000000000000000000000000000000000000000000000000000000000000000;
-  auctioneer = adminPubKey;
+  winner = pad(32, "");
+  auctioneer = disclose(adminPubKey);
 }
 
 export circuit place_bid(commitment: Bytes<32>): [] {
-  // 1. Assert Auction is actively accepting sealed bids
   assert(isOpen, "Auction is currently closed");
-
-  // 2. Assert commitment is unique (no duplicate bids)
-  assert(!commitments.member(commitment), "Bid commitment has already been registered");
-
-  // 3. Disclose commitment to public ledger
+  assert(!commitments.member(disclose(commitment)), "Bid commitment has already been registered");
   commitments.insert(disclose(commitment), true);
   totalBids.increment(1);
 }
 
 export circuit reveal_bid(): [] {
-  // 1. Assert Auction is active
   assert(isOpen, "Auction is currently closed");
-
-  // 2. Query private witness zone
   const amount: Uint<64> = getBidAmount();
   const secret: Bytes<32> = getBidderSecret();
   const bidder: Bytes<32> = getBidderAddress();
 
-  // 3. Assert minimum reserve price
   assert(amount >= minReserveBid, "Bid amount is strictly below the required minimum reserve");
 
-  // 4. Verify commitment hash = H(amount, secret) matches registered on-chain commitment
   const computedCommitment: Bytes<32> = persistentHash<Vector<2, Bytes<32>>>([
     secret,
     persistentHash<Uint<64>>(amount)
   ]);
 
-  assert(commitments.member(computedCommitment), "Invalid reveal: Commitment does not exist in registered bids");
+  assert(commitments.member(disclose(computedCommitment)), "Invalid reveal: Commitment does not exist in registered bids");
 
-  // 5. Compare with current highest bid and update winning state if higher
-  if (amount > highestBid) {
+  if (disclose(amount > highestBid)) {
     highestBid = disclose(amount);
     winner = disclose(bidder);
   }
@@ -68,3 +52,4 @@ export circuit reveal_bid(): [] {
 export circuit close_auction(): [] {
   isOpen = false;
 }
+
