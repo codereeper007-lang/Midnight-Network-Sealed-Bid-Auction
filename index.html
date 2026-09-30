@@ -156,10 +156,10 @@
           <div class="stat-label">Current High Bid</div>
           <div class="stat-value" id="val-highbid">
             <span class="stat-num" data-target="0">0</span>
-            <span class="stat-unit">tDUST</span>
+            <span class="stat-unit">tNIGHT</span>
             <span class="zk-badge"><i class="fa-solid fa-lock"></i> ZK Sealed</span>
           </div>
-          <div class="stat-desc">Reserve: ≥ 100 tDUST</div>
+          <div class="stat-desc">Reserve: ≥ 100 tNIGHT (Gas: DUST)</div>
         </div>
 
         <div class="stat-col" id="stat-col-bids">
@@ -245,7 +245,7 @@
 
       <form id="bid-form" class="bid-form" onsubmit="return false;">
         <div class="form-group" id="group-bid-amount">
-          <label for="input-bid-amount">Secret Bid Amount (tDUST)</label>
+          <label for="input-bid-amount">Secret Bid Amount (tNIGHT)</label>
           <div class="input-wrapper">
             <input 
               type="number" 
@@ -256,9 +256,9 @@
               step="1" 
               required
             >
-            <span class="input-suffix">tDUST</span>
+            <span class="input-suffix">tNIGHT</span>
           </div>
-          <small class="form-hint">Minimum reserve: 100 tDUST. Handled securely by 1AM ProofProvider.</small>
+          <small class="form-hint">Minimum reserve: 100 tNIGHT. Transaction fee paid in DUST.</small>
         </div>
 
         <div class="zk-security-callout">

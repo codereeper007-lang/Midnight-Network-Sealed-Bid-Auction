@@ -57,6 +57,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Animate stats on page load
   animateStatCounters();
 
+  // Try auto-reconnect if session is already saved
+  await walletService.tryAutoConnect();
+
   // Sync with live Midnight Preview Indexer
   try {
     const onChainState = await midnightAuctionService.syncWithIndexer();
@@ -66,7 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (valHighBid) valHighBid.setAttribute('data-target', onChainState.highestBid.toString());
     animateStatCounters();
   } catch (syncErr) {
-    console.warn("Indexer sync notice:", syncErr);
+    console.warn('Indexer sync notice:', syncErr);
   }
 
   // --------------------------------------------------------------------------
@@ -74,7 +77,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // --------------------------------------------------------------------------
   walletService.subscribe((wallet: WalletAccountState) => {
     if (wallet.isConnected && wallet.address) {
-      // Format address and balance (e.g. 1AM: mn_prev...8f9a | 450 tDUST)
       const truncated = wallet.address.length > 18
         ? `${wallet.address.slice(0, 9)}...${wallet.address.slice(-6)}`
         : wallet.address;
@@ -83,36 +85,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         ? ` (${wallet.dustBalance} DUST)`
         : '';
 
-      walletAddressDisplay.textContent = `${wallet.walletName || '1AM'}: ${truncated}${balanceText}`;
+      walletAddressDisplay.textContent = `${wallet.walletName || 'Wallet'}: ${truncated}${balanceText}`;
       walletStatusBadge.style.display = 'flex';
       btnSignIn.style.display = 'none';
 
       btnPrimaryAction.classList.add('connected');
-      ctaIcon.className = "fa-solid fa-gavel";
-      ctaText.textContent = "Place Sealed Bid";
+      ctaIcon.className = 'fa-solid fa-gavel';
+      ctaText.textContent = 'Place Sealed Bid';
       btnRevealAction.style.display = 'inline-flex';
     } else {
       walletStatusBadge.style.display = 'none';
       btnSignIn.style.display = 'flex';
-      headerWalletText.textContent = "Connect 1AM";
+      headerWalletText.textContent = 'Connect Wallet';
 
       btnPrimaryAction.classList.remove('connected');
-      ctaIcon.className = "fa-solid fa-wallet";
-      ctaText.textContent = "Connect 1AM Wallet";
+      ctaIcon.className = 'fa-solid fa-wallet';
+      ctaText.textContent = 'Connect Midnight Wallet';
       btnRevealAction.style.display = 'none';
     }
   });
 
-  // Connect wallet handlers
+  // Direct user-gesture connection handler
   const handleConnect = async () => {
-    ctaText.textContent = "Connecting 1AM...";
+    ctaText.textContent = 'Connecting...';
     btnPrimaryAction.disabled = true;
     try {
       const state = await walletService.connect();
-      showToast(`Connected to ${state.walletName} Wallet (${state.address?.slice(0, 10)}...)`, "success");
+      showToast(`Connected to ${state.walletName} (${state.address?.slice(0, 10)}...)`, 'success');
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : "1AM Wallet extension not detected in browser.";
-      showToast(errorMsg, "error");
+      const errorMsg = err instanceof Error ? err.message : 'Midnight wallet extension not detected in browser.';
+      showToast(errorMsg, 'error');
     } finally {
       btnPrimaryAction.disabled = false;
     }
@@ -135,7 +137,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   btnDisconnectWallet.addEventListener('click', () => {
     walletService.disconnect();
-    showToast("Midnight Wallet session disconnected", "info");
+    showToast('Midnight Wallet session disconnected', 'info');
   });
 
   // --------------------------------------------------------------------------
@@ -157,7 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         actionLabel = 'Sealed Bid';
         iconClass = 'fa-shield-halved';
       } else if (tx.action === 'REVEAL_BID') {
-        actionLabel = `Reveal Bid${tx.amount ? ` (${tx.amount} tDUST)` : ''}`;
+        actionLabel = `Reveal Bid${tx.amount ? ` (${tx.amount} tNIGHT)` : ''}`;
         iconClass = 'fa-eye';
       }
 
@@ -186,7 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div class="activity-links">
             <span class="badge-confirmed">CONFIRMED</span>
             <a 
-              href="https://explorer.1am.xyz/transaction/${tx.txHash}?network=preview" 
+              href="https://explorer.1am.xyz/tx/${tx.txHash}?network=preview" 
               target="_blank" 
               rel="noopener noreferrer" 
               class="explorer-btn"
@@ -248,15 +250,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnText = btnSubmitZkBid.querySelector('.btn-text') as HTMLElement;
 
     if (mode === 'place') {
-      modalHeading.textContent = "Submit ZK Sealed Bid";
-      modalSubtitle.textContent = "Private witness generated in local memory; secret is never exposed to DOM.";
+      modalHeading.textContent = 'Submit ZK Sealed Bid';
+      modalSubtitle.textContent = 'Private witness generated in local memory; secret is never exposed to DOM.';
       groupBidAmount.style.display = 'flex';
       btnText.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Generate Proof & Place Bid';
       inputBidAmount.value = '';
       inputBidAmount.focus();
     } else {
-      modalHeading.textContent = "Reveal Sealed Bid & Verify Winner";
-      modalSubtitle.textContent = "Proves preimage knowledge from private local storage to resolve the auction.";
+      modalHeading.textContent = 'Reveal Sealed Bid & Verify Winner';
+      modalSubtitle.textContent = 'Proves preimage knowledge from private local storage to resolve the auction.';
       groupBidAmount.style.display = 'none';
       btnText.innerHTML = '<i class="fa-solid fa-eye"></i> Prove Knowledge & Reveal';
     }
@@ -294,7 +296,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (currentModalMode === 'place') {
         const amount = Number(inputBidAmount.value);
         if (!amount || amount < 100) {
-          showToast("Minimum bid reserve is 100 tDUST", "error");
+          showToast('Minimum bid reserve is 100 tNIGHT', 'error');
           return;
         }
 
@@ -304,11 +306,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         previewCommitment.textContent = result.commitment;
-        previewTxHash.innerHTML = `<a href="https://explorer.1am.xyz/transaction/${result.txHash}?network=preview" target="_blank" rel="noopener noreferrer" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 14)}... (View on 1AM Explorer)</a>`;
+        previewTxHash.innerHTML = `<a href="https://explorer.1am.xyz/tx/${result.txHash}?network=preview" target="_blank" rel="noopener noreferrer" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 14)}... (View on Explorer)</a>`;
         zkOutputPreview.style.display = 'flex';
         progressStatusBanner.style.display = 'none';
 
-        showToast(`ZK Bid successfully submitted to Midnight Preview Testnet!`, "success");
+        showToast('ZK Bid successfully submitted to Midnight Preview Testnet!', 'success');
 
         // Update Bids Placed counter
         const valBids = document.querySelector('#val-bids .stat-num') as HTMLElement;
@@ -329,20 +331,20 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (msg) progressStatusText.textContent = msg;
         });
 
-        previewCommitment.textContent = `Amount: ${result.amount} tDUST`;
-        previewTxHash.innerHTML = `<a href="https://explorer.1am.xyz/transaction/${result.txHash}?network=preview" target="_blank" rel="noopener noreferrer" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 14)}... (View on 1AM Explorer)</a>`;
+        previewCommitment.textContent = `Amount: ${result.amount} tNIGHT`;
+        previewTxHash.innerHTML = `<a href="https://explorer.1am.xyz/tx/${result.txHash}?network=preview" target="_blank" rel="noopener noreferrer" style="color:#38ef7d;text-decoration:underline;">${result.txHash.slice(0, 14)}... (View on Explorer)</a>`;
         zkOutputPreview.style.display = 'flex';
         progressStatusBanner.style.display = 'none';
 
         if (result.isWinner) {
-          showToast(`🏆 Congratulations! You hold the highest bid: ${result.amount} tDUST!`, "success");
+          showToast(`🏆 Congratulations! You hold the highest bid: ${result.amount} tNIGHT!`, 'success');
           const valHighBid = document.querySelector('#val-highbid .stat-num') as HTMLElement;
           if (valHighBid) {
             valHighBid.setAttribute('data-target', result.highestBid.toString());
             valHighBid.textContent = result.highestBid.toString();
           }
         } else {
-          showToast(`Bid revealed (${result.amount} tDUST). Current highest is ${result.highestBid} tDUST.`, "info");
+          showToast(`Bid revealed (${result.amount} tNIGHT). Current highest is ${result.highestBid} tNIGHT.`, 'info');
         }
 
         setTimeout(() => {
@@ -351,8 +353,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } catch (err: unknown) {
       progressStatusBanner.style.display = 'none';
-      const errorMessage = err instanceof Error ? err.message : "Circuit execution failed or rejected by wallet.";
-      showToast(errorMessage, "error");
+      const errorMessage = err instanceof Error ? err.message : 'Circuit execution failed or rejected by wallet.';
+      showToast(errorMessage, 'error');
     } finally {
       btnSubmitZkBid.disabled = false;
       btnText.style.display = 'inline-block';
@@ -430,7 +432,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (type === 'success') iconClass = 'fa-circle-check';
     if (type === 'error') iconClass = 'fa-circle-exclamation';
 
-    // Parse markdown links [text](url) into HTML anchors
     const formattedMsg = message.replace(
       /\[(.*?)\]\((.*?)\)/g,
       '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#38ef7d;text-decoration:underline;font-weight:600;">$1</a>'
